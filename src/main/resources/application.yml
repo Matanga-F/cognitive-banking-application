@@ -1,0 +1,48 @@
+# src/main/resources/application.yml
+spring:
+  application:
+    name: cognitive-banking-application
+
+  # H2 Database (Development)
+  datasource:
+    url: jdbc:h2:mem:bankdb
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+        format_sql: true
+        show_sql: true
+    show-sql: true
+
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+# Server Configuration
+server:
+  port: 8080
+  servlet:
+    context-path: /api/cognitive/bank
+
+# Logging
+logging:
+  level:
+    com.cognitive.banking: DEBUG
+    org.hibernate.SQL: DEBUG
+
+# Management Endpoints
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
