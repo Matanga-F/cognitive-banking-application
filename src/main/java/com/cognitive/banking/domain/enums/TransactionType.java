@@ -2,17 +2,21 @@
 package com.cognitive.banking.domain.enums;
 
 public enum TransactionType {
+    // Debit transactions
+    PURCHASE,
+    ATM_WITHDRAWAL,
+    TRANSFER_OUT,
+    FEE,
+    PAYMENT,
+
+    // Credit transactions
     DEPOSIT,
-    WITHDRAWAL,
-    TRANSFER,
-    BILL_PAYMENT,
-    LOAN_DISBURSEMENT,
-    LOAN_REPAYMENT,
-    INTEREST_CREDIT,
-    INTEREST_DEBIT,
-    FEE_CHARGE,
+    TRANSFER_IN,
     REFUND,
-    REVERSAL,
-    STANDING_ORDER,
-    DIRECT_DEBIT
+    INTEREST,
+    CASHBACK,
+
+    // System transactions
+    ADJUSTMENT,
+    REVERSAL
 }

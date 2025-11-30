@@ -7,6 +7,5 @@ public enum TransactionStatus {
     FAILED,
     CANCELLED,
     REVERSED,
-    DECLINED,
-    PROCESSING
+    DECLINED
 }

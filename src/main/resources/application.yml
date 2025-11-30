@@ -1,48 +1,111 @@
-# src/main/resources/application.yml
 spring:
-  application:
-    name: cognitive-banking-application
+  main:
+    allow-bean-definition-overriding: true
 
-  # H2 Database (Development)
+# ----------------------
+# Dev profile - H2 DB
+# ----------------------
+---
+spring:
+  config:
+    activate:
+      on-profile: dev
+
   datasource:
-    url: jdbc:h2:mem:bankdb
+    url: jdbc:h2:mem:bankdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
     driver-class-name: org.h2.Driver
     username: sa
-    password:
+    password: ""
+    hikari:
+      maximum-pool-size: 10
 
   jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
     hibernate:
       ddl-auto: create-drop
+    show-sql: true
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.H2Dialect
         format_sql: true
-        show_sql: true
-    show-sql: true
 
   h2:
     console:
       enabled: true
       path: /h2-console
 
-# Server Configuration
+  # DISABLE FLYWAY FOR H2
+  flyway:
+    enabled: false
+
 server:
   port: 8080
   servlet:
     context-path: /api/cognitive/bank
 
-# Logging
 logging:
   level:
+    root: INFO
     com.cognitive.banking: DEBUG
-    org.hibernate.SQL: DEBUG
 
-# Management Endpoints
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics
+        include: health,info,metrics,loggers,mappings
+  endpoint:
+    health:
+      show-details: always
+
+# ----------------------
+# Docker / Production profile - Postgres + Redis
+# ----------------------
+---
+spring:
+  config:
+    activate:
+      on-profile: docker
+
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://postgres:5432/cognitive_bank}
+    username: ${SPRING_DATASOURCE_USERNAME:desta}
+    password: ${SPRING_DATASOURCE_PASSWORD:Akundaho&}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 2
+
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+
+  # ENABLE FLYWAY ONLY FOR POSTGRES
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+  data:
+    redis:
+      host: ${SPRING_REDIS_HOST:redis}
+      port: ${SPRING_REDIS_PORT:6379}
+      password: ${SPRING_REDIS_PASSWORD:redispass123}
+      database: ${REDIS_DATABASE:0}
+
+server:
+  port: ${SERVER_PORT:8080}
+  servlet:
+    context-path: /api/cognitive/bank
+
+logging:
+  level:
+    com.cognitive.banking: ${LOG_LEVEL:DEBUG}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,loggers,mappings
   endpoint:
     health:
       show-details: always

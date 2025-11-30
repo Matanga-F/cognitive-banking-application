@@ -1,14 +1,10 @@
-// src/main/java/com/cognitive/banking/domain/enums/AccountType.java
 package com.cognitive.banking.domain.enums;
 
 public enum AccountType {
+    CHECKING,
     SAVINGS,
-    CURRENT,
-    FIXED_DEPOSIT,
-    STUDENT,
-    BUSINESS,
-    JOINT,
-    SALARY,
-    LOAN,
-    CREDIT_CARD
+    MONEY_MARKET,
+    CERTIFICATE_OF_DEPOSIT,
+    IRA,
+    BROKERAGE
 }

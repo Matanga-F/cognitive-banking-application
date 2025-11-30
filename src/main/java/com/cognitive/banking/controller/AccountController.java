@@ -1,70 +1,115 @@
 // src/main/java/com/cognitive/banking/controller/AccountController.java
 package com.cognitive.banking.controller;
 
+import com.cognitive.banking.domain.enums.AccountStatus;
 import com.cognitive.banking.dto.AccountDTO;
 import com.cognitive.banking.dto.CreateAccountRequest;
+import com.cognitive.banking.dto.UpdateAccountRequest;
 import com.cognitive.banking.service.AccountService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
+import jakarta.validation.*;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.UUID;
 
 @RestController
-@RequestMapping("/accounts")  // ✅ Changed from "/api/accounts" to "/accounts"
+@RequestMapping("/accounts")
 public class AccountController {
-    private final AccountService accountService;
 
-    public AccountController(AccountService accountService) {
-        this.accountService = accountService;
-    }
+    @Autowired
+    private AccountService accountService;
 
     @PostMapping
-    public ResponseEntity<AccountDTO> createAccount(@RequestBody CreateAccountRequest request) {
-        AccountDTO account = accountService.createAccount(request);
-        return ResponseEntity.ok(account);
+    public ResponseEntity<AccountDTO> createAccount(@Valid @RequestBody CreateAccountRequest request) {
+        AccountDTO accountDTO = accountService.createAccount(request);
+        return new ResponseEntity<>(accountDTO, HttpStatus.CREATED);
     }
 
-    @GetMapping("/{accountNumber}")
-    public ResponseEntity<AccountDTO> getAccount(@PathVariable String accountNumber) {
-        AccountDTO account = accountService.getAccountByNumber(accountNumber);
-        return ResponseEntity.ok(account);
+    @GetMapping("/{accountId}")
+    public ResponseEntity<AccountDTO> getAccountById(@PathVariable UUID accountId) {
+        return accountService.getAccountById(accountId)
+                .map(account -> new ResponseEntity<>(account, HttpStatus.OK))
+                .orElse(new ResponseEntity<>(HttpStatus.NOT_FOUND));
+    }
+
+    @GetMapping("/number/{accountNumber}")
+    public ResponseEntity<AccountDTO> getAccountByNumber(@PathVariable String accountNumber) {
+        return accountService.getAccountByNumber(accountNumber)
+                .map(account -> new ResponseEntity<>(account, HttpStatus.OK))
+                .orElse(new ResponseEntity<>(HttpStatus.NOT_FOUND));
     }
 
     @GetMapping("/user/{userId}")
-    public ResponseEntity<List<AccountDTO>> getUserAccounts(@PathVariable Long userId) {
-        List<AccountDTO> accounts = accountService.getUserAccounts(userId);
-        return ResponseEntity.ok(accounts);
+    public ResponseEntity<List<AccountDTO>> getAccountsByUserId(@PathVariable UUID userId) {
+        List<AccountDTO> accounts = accountService.getAccountsByUserId(userId);
+        return new ResponseEntity<>(accounts, HttpStatus.OK);
     }
 
-    @GetMapping("/{accountNumber}/balance")
-    public ResponseEntity<BigDecimal> getAccountBalance(@PathVariable String accountNumber) {
-        BigDecimal balance = accountService.getAccountBalance(accountNumber);
-        return ResponseEntity.ok(balance);
+    @GetMapping
+    public ResponseEntity<List<AccountDTO>> getAllAccounts() {
+        List<AccountDTO> accounts = accountService.getAllAccounts();
+        return new ResponseEntity<>(accounts, HttpStatus.OK);
     }
 
-    @PostMapping("/{accountNumber}/deposit")
-    public ResponseEntity<AccountDTO> deposit(
-            @PathVariable String accountNumber,
-            @RequestParam BigDecimal amount) {
-        AccountDTO account = accountService.deposit(accountNumber, amount);
-        return ResponseEntity.ok(account);
+    @PutMapping("/{accountId}")
+    public ResponseEntity<AccountDTO> updateAccount(@PathVariable UUID accountId,
+                                                    @Valid @RequestBody UpdateAccountRequest request) {
+        try {
+            AccountDTO updatedAccount = accountService.updateAccount(accountId, request);
+            return new ResponseEntity<>(updatedAccount, HttpStatus.OK);
+        } catch (RuntimeException e) {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
     }
 
-    @PostMapping("/{accountNumber}/withdraw")
-    public ResponseEntity<AccountDTO> withdraw(
-            @PathVariable String accountNumber,
-            @RequestParam BigDecimal amount) {
-        AccountDTO account = accountService.withdraw(accountNumber, amount);
-        return ResponseEntity.ok(account);
+    @PatchMapping("/{accountId}/status")
+    public ResponseEntity<AccountDTO> updateAccountStatus(@PathVariable UUID accountId,
+                                                          @RequestParam AccountStatus status) {
+        try {
+            AccountDTO updatedAccount = accountService.updateAccountStatus(accountId, status);
+            return new ResponseEntity<>(updatedAccount, HttpStatus.OK);
+        } catch (RuntimeException e) {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
     }
-    // Add this method to src/main/java/com/cognitive/banking/controller/AccountController.java
-    @PostMapping("/transfer")
-    public ResponseEntity<AccountDTO> transfer(
-            @RequestParam String fromAccountNumber,
-            @RequestParam String toAccountNumber,
-            @RequestParam BigDecimal amount) {
-        AccountDTO account = accountService.transfer(fromAccountNumber, toAccountNumber, amount);
-        return ResponseEntity.ok(account);
+
+    @DeleteMapping("/{accountId}")
+    public ResponseEntity<Void> deleteAccount(@PathVariable UUID accountId) {
+        try {
+            accountService.deleteAccount(accountId);
+            return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+        } catch (RuntimeException e) {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
+    }
+
+    @GetMapping("/{accountId}/balance")
+    public ResponseEntity<BigDecimal> getAccountBalance(@PathVariable UUID accountId) {
+        try {
+            BigDecimal balance = accountService.getAccountBalance(accountId);
+            return new ResponseEntity<>(balance, HttpStatus.OK);
+        } catch (RuntimeException e) {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
+    }
+
+    @GetMapping("/user/{userId}/total-balance")
+    public ResponseEntity<BigDecimal> getTotalBalanceByUserId(@PathVariable UUID userId) {
+        BigDecimal totalBalance = accountService.getTotalBalanceByUserId(userId);
+        return new ResponseEntity<>(totalBalance, HttpStatus.OK);
+    }
+
+    @GetMapping("/user/{userId}/active-count")
+    public ResponseEntity<Long> getActiveAccountsCount(@PathVariable UUID userId) {
+        long count = accountService.getActiveAccountsCountByUserId(userId);
+        return new ResponseEntity<>(count, HttpStatus.OK);
+    }
+
+    @GetMapping("/health")
+    public ResponseEntity<String> healthCheck() {
+        return new ResponseEntity<>("Account Service is running", HttpStatus.OK);
     }
 }

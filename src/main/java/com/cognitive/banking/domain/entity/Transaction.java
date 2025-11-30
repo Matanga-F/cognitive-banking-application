@@ -1,113 +1,140 @@
 // src/main/java/com/cognitive/banking/domain/entity/Transaction.java
 package com.cognitive.banking.domain.entity;
 
-import com.cognitive.banking.domain.enums.TransactionType;
 import com.cognitive.banking.domain.enums.TransactionStatus;
+import com.cognitive.banking.domain.enums.TransactionType;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
 @Table(name = "transactions")
 public class Transaction {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue
+    @Column(name = "transaction_id")
+    private UUID transactionId;
 
-    @Column(unique = true, nullable = false)
+    @Column(name = "transaction_reference", unique = true, nullable = false)
     private String transactionReference;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "account_id", nullable = false)
-    private Account account;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "transaction_type", nullable = false)
+    private TransactionType transactionType;
 
     @Enumerated(EnumType.STRING)
-    private TransactionType type;
+    @Column(name = "transaction_status", nullable = false)
+    private TransactionStatus transactionStatus;
 
-    @Enumerated(EnumType.STRING)
-    private TransactionStatus status = TransactionStatus.PENDING;
-
-    @Column(precision = 15, scale = 2)
+    @Column(name = "amount", precision = 15, scale = 2, nullable = false)
     private BigDecimal amount;
 
-    @Column(precision = 15, scale = 2)
+    @Column(name = "currency", nullable = false)
+    private String currency;
+
+    @Column(name = "description")
+    private String description;
+
+    @Column(name = "merchant_name")
+    private String merchantName;
+
+    @Column(name = "merchant_category")
+    private String merchantCategory;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "from_account_id")
+    private Account fromAccount;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "to_account_id")
+    private Account toAccount;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "card_id")
+    private Card card;
+
+    @Column(name = "balance_after", precision = 15, scale = 2)
     private BigDecimal balanceAfter;
 
-    private String recipientAccountNumber;
-    private String recipientName;
-    private String recipientBank;
-    private String description;
-    private String merchant;
-    private String location;
-    private String authorizationCode;
+    @Column(name = "available_balance_after", precision = 15, scale = 2)
+    private BigDecimal availableBalanceAfter;
 
+    @Column(name = "transaction_date", nullable = false)
+    private LocalDateTime transactionDate;
+
+    @Column(name = "posted_date")
+    private LocalDateTime postedDate;
+
+    @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
-    private LocalDateTime processedAt;
+
+    // Constructors
+    public Transaction() {
+        this.createdAt = LocalDateTime.now();
+        this.transactionStatus = TransactionStatus.PENDING;
+        this.transactionDate = LocalDateTime.now();
+    }
+
+    public Transaction(String transactionReference, TransactionType transactionType,
+                       BigDecimal amount, String currency, Account fromAccount) {
+        this();
+        this.transactionReference = transactionReference;
+        this.transactionType = transactionType;
+        this.amount = amount;
+        this.currency = currency;
+        this.fromAccount = fromAccount;
+    }
 
     // Getters and Setters
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
+    public UUID getTransactionId() { return transactionId; }
+    public void setTransactionId(UUID transactionId) { this.transactionId = transactionId; }
 
     public String getTransactionReference() { return transactionReference; }
     public void setTransactionReference(String transactionReference) { this.transactionReference = transactionReference; }
 
-    public Account getAccount() { return account; }
-    public void setAccount(Account account) { this.account = account; }
+    public TransactionType getTransactionType() { return transactionType; }
+    public void setTransactionType(TransactionType transactionType) { this.transactionType = transactionType; }
 
-    public TransactionType getType() { return type; }
-    public void setType(TransactionType type) { this.type = type; }
-
-    public TransactionStatus getStatus() { return status; }
-    public void setStatus(TransactionStatus status) { this.status = status; }
+    public TransactionStatus getTransactionStatus() { return transactionStatus; }
+    public void setTransactionStatus(TransactionStatus transactionStatus) { this.transactionStatus = transactionStatus; }
 
     public BigDecimal getAmount() { return amount; }
     public void setAmount(BigDecimal amount) { this.amount = amount; }
 
-    public BigDecimal getBalanceAfter() { return balanceAfter; }
-    public void setBalanceAfter(BigDecimal balanceAfter) { this.balanceAfter = balanceAfter; }
-
-    public String getRecipientAccountNumber() { return recipientAccountNumber; }
-    public void setRecipientAccountNumber(String recipientAccountNumber) { this.recipientAccountNumber = recipientAccountNumber; }
-
-    public String getRecipientName() { return recipientName; }
-    public void setRecipientName(String recipientName) { this.recipientName = recipientName; }
-
-    public String getRecipientBank() { return recipientBank; }
-    public void setRecipientBank(String recipientBank) { this.recipientBank = recipientBank; }
+    public String getCurrency() { return currency; }
+    public void setCurrency(String currency) { this.currency = currency; }
 
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
 
-    public String getMerchant() { return merchant; }
-    public void setMerchant(String merchant) { this.merchant = merchant; }
+    public String getMerchantName() { return merchantName; }
+    public void setMerchantName(String merchantName) { this.merchantName = merchantName; }
 
-    public String getLocation() { return location; }
-    public void setLocation(String location) { this.location = location; }
+    public String getMerchantCategory() { return merchantCategory; }
+    public void setMerchantCategory(String merchantCategory) { this.merchantCategory = merchantCategory; }
 
-    public String getAuthorizationCode() { return authorizationCode; }
-    public void setAuthorizationCode(String authorizationCode) { this.authorizationCode = authorizationCode; }
+    public Account getFromAccount() { return fromAccount; }
+    public void setFromAccount(Account fromAccount) { this.fromAccount = fromAccount; }
+
+    public Account getToAccount() { return toAccount; }
+    public void setToAccount(Account toAccount) { this.toAccount = toAccount; }
+
+    public Card getCard() { return card; }
+    public void setCard(Card card) { this.card = card; }
+
+    public BigDecimal getBalanceAfter() { return balanceAfter; }
+    public void setBalanceAfter(BigDecimal balanceAfter) { this.balanceAfter = balanceAfter; }
+
+    public BigDecimal getAvailableBalanceAfter() { return availableBalanceAfter; }
+    public void setAvailableBalanceAfter(BigDecimal availableBalanceAfter) { this.availableBalanceAfter = availableBalanceAfter; }
+
+    public LocalDateTime getTransactionDate() { return transactionDate; }
+    public void setTransactionDate(LocalDateTime transactionDate) { this.transactionDate = transactionDate; }
+
+    public LocalDateTime getPostedDate() { return postedDate; }
+    public void setPostedDate(LocalDateTime postedDate) { this.postedDate = postedDate; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
-
-    public LocalDateTime getUpdatedAt() { return updatedAt; }
-    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
-
-    public LocalDateTime getProcessedAt() { return processedAt; }
-    public void setProcessedAt(LocalDateTime processedAt) { this.processedAt = processedAt; }
-
-    @PrePersist
-    protected void onCreate() {
-        createdAt = LocalDateTime.now();
-        updatedAt = LocalDateTime.now();
-        if (transactionReference == null) {
-            transactionReference = "TXN" + System.currentTimeMillis() + (int)(Math.random() * 1000);
-        }
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
-    }
 }
