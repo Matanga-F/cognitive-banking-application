@@ -1,47 +1,17 @@
-services:
-  cognitive-bank-application:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: cognitive-bank-app
-    env_file:
-      - .env
-    environment:
-      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-docker}
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}
-      - SPRING_DATASOURCE_USERNAME=${DB_USERNAME}
-      - SPRING_DATASOURCE_PASSWORD=${DB_PASSWORD}
-      - SPRING_REDIS_HOST=${REDIS_HOST}
-      - SPRING_REDIS_PORT=${REDIS_PORT}
-      - SPRING_REDIS_PASSWORD=${REDIS_PASSWORD}
-      - SERVER_PORT=${SERVER_PORT}
-      - LOG_LEVEL=${LOG_LEVEL}
-    ports:
-      - "${SERVER_PORT:-8080}:8080"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    networks:
-      - bank-network
-    healthcheck:
-      test: ["CMD-SHELL", "curl -sS --fail http://localhost:8080/actuator/health || exit 1"]
-      interval: 15s
-      timeout: 5s
-      retries: 6
-      start_period: 20s
+version: '3.8'
 
+services:
+  # ============ Database Services ============
   postgres:
     image: postgres:15
     container_name: cognitive-bank-db
     env_file:
       - .env
     environment:
-      - POSTGRES_DB=${DB_NAME}
-      - POSTGRES_USER=${DB_USERNAME}
-      - POSTGRES_PASSWORD=${DB_PASSWORD}
-      - POSTGRES_INITDB_ARGS=--encoding=UTF8
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_INITDB_ARGS: --encoding=UTF8
     ports:
       - "${DB_PORT:-5432}:5432"
     volumes:
@@ -79,8 +49,8 @@ services:
     env_file:
       - .env
     environment:
-      - PGADMIN_DEFAULT_EMAIL=${PGADMIN_DEFAULT_EMAIL}
-      - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_DEFAULT_PASSWORD}
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
     ports:
       - "8081:80"
     networks:
@@ -88,10 +58,232 @@ services:
     depends_on:
       - postgres
 
+  # ============ Application Service ============
+  cognitive-bank-application:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cognitive-bank-app
+    env_file:
+      - .env
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}
+      SPRING_DATASOURCE_USERNAME: ${DB_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      SPRING_REDIS_HOST: ${REDIS_HOST}
+      SPRING_REDIS_PORT: ${REDIS_PORT}
+      SPRING_REDIS_PASSWORD: ${REDIS_PASSWORD}
+      SERVER_PORT: ${SERVER_PORT}
+      LOG_LEVEL: ${LOG_LEVEL}
+      # Actuator and Metrics Configuration
+      MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health,info,metrics,prometheus,env
+      MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS: always
+      MANAGEMENT_METRICS_EXPORT_PROMETHEUS_ENABLED: true
+      MANAGEMENT_ENDPOINT_PROMETHEUS_ENABLED: true
+      # Java memory settings
+      JAVA_OPTS: -Xmx512m -Xms256m -XX:MaxRAMPercentage=75.0 -Djava.security.egd=file:/dev/./urandom
+    ports:
+      - "${SERVER_PORT:-8080}:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - bank-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sS --fail http://localhost:8080/api/cognitive/bank/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 6
+      start_period: 40s
+    labels:
+      # Prometheus auto-discovery labels
+      prometheus.io.scrape: "true"
+      prometheus.io.path: "/api/cognitive/bank/actuator/prometheus"
+      prometheus.io.port: "8080"
+      prometheus.io.scheme: "http"
+
+  # ============ Monitoring Services ============
+  prometheus:
+    image: prom/prometheus:v2.47.0
+    container_name: cognitive-bank-prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.enable-lifecycle'
+      - '--web.enable-admin-api'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+    volumes:
+      - ./monitoring/prometheus:/etc/prometheus
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - bank-network
+    restart: unless-stopped
+    depends_on:
+      - cognitive-bank-application
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  grafana:
+    image: grafana/grafana:10.1.0
+    container_name: cognitive-bank-grafana
+    env_file:
+      - .env
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_INSTALL_PLUGINS: grafana-clock-panel,grafana-simple-json-datasource
+      GF_FEATURE_TOGGLES_ENABLE: "publicDashboards"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+      - ./monitoring/grafana/dashboards:/etc/grafana/dashboards
+    ports:
+      - "3000:3000"
+    networks:
+      - bank-network
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Postgres Exporter for detailed database metrics
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.14.0
+    container_name: cognitive-bank-postgres-exporter
+    env_file:
+      - .env
+    environment:
+      DATA_SOURCE_NAME: "postgresql://${DB_USERNAME}:${DB_PASSWORD}@postgres:5432/${DB_NAME}?sslmode=disable"
+      PG_EXPORTER_EXTEND_QUERY_PATH: /etc/postgres-queries.yaml
+    volumes:
+      - ./monitoring/postgres-queries.yaml:/etc/postgres-queries.yaml:ro
+    ports:
+      - "9187:9187"
+    networks:
+      - bank-network
+    restart: unless-stopped
+    depends_on:
+      - postgres
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9187/metrics"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # Redis Exporter for detailed Redis metrics
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.55.0
+    container_name: cognitive-bank-redis-exporter
+    env_file:
+      - .env
+    environment:
+      REDIS_ADDR: "redis://redis:6379"
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      REDIS_ALIAS: "cognitive-bank-redis"
+    command:
+      - '--redis.addr=redis://redis:6379'
+      - '--redis.password=${REDIS_PASSWORD}'
+      - '--web.listen-address=:9121'
+    ports:
+      - "9121:9121"
+    networks:
+      - bank-network
+    depends_on:
+      - redis
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9121/metrics"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # Node Exporter for host system metrics
+  node-exporter:
+    image: prom/node-exporter:v1.6.1
+    container_name: cognitive-bank-node-exporter
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+      - '--collector.textfile.directory=/etc/node-exporter/'
+      - '--collector.diskstats.ignored-devices=^(ram|loop|fd|(h|s|v|xv)d[a-z]|nvme\\d+n\\d+p)\\d+$'
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    ports:
+      - "9100:9100"
+    networks:
+      - bank-network
+    privileged: true
+    pid: host
+
+  # cAdvisor for container metrics
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.47.2
+    container_name: cognitive-bank-cadvisor
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    ports:
+      - "8088:8080"
+    networks:
+      - bank-network
+    privileged: true
+    devices:
+      - /dev/kmsg
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # Alert Manager (Optional - for alerts)
+  alertmanager:
+    image: prom/alertmanager:v0.25.0
+    container_name: cognitive-bank-alertmanager
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+      - '--web.external-url=http://localhost:9093'
+    volumes:
+      - ./monitoring/alertmanager:/etc/alertmanager
+      - alertmanager_data:/alertmanager
+    ports:
+      - "9093:9093"
+    networks:
+      - bank-network
+    depends_on:
+      - prometheus
+
 volumes:
   postgres_data:
     driver: local
   redis_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+  alertmanager_data:
     driver: local
 
 networks:

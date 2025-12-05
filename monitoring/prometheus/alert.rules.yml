@@ -1,0 +1,112 @@
+groups:
+  - name: banking-alerts
+    rules:
+
+      # ================= APPLICATION HEALTH =================
+      - alert: BankingAppDown
+        expr: up{job="cognitive-bank-app"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: banking-app
+          team: banking-devops
+        annotations:
+          summary: "Cognitive Banking App is DOWN"
+          description: "Application {{ $labels.instance }} has been down for 1 minute. Immediate action required!"
+          runbook: "https://wiki.cognitive.bank/runbooks/app-down"
+
+      # ================= PERFORMANCE ALERTS =================
+      - alert: HighHttpErrorRate
+        expr: |
+          sum(rate(http_server_requests_seconds_count{job="cognitive-bank-app", status=~"5.."}[5m]))
+          /
+          sum(rate(http_server_requests_seconds_count{job="cognitive-bank-app"}[5m]))
+          * 100 > 5
+        for: 5m
+        labels:
+          severity: warning
+          service: banking-app
+        annotations:
+          summary: "High HTTP Error Rate ({{ $value | humanizePercentage }})"
+          description: "HTTP error rate is above 5% for {{ $labels.instance }}"
+
+      - alert: SlowResponseTime
+        expr: |
+          histogram_quantile(0.95,
+            sum by(le, instance, job) (
+              rate(http_server_requests_seconds_bucket{job="cognitive-bank-app"}[5m])
+            )
+          ) > 2
+        for: 5m
+        labels:
+          severity: warning
+          service: banking-app
+        annotations:
+          summary: "Slow Response Time ({{ $value }}s)"
+          description: "95th percentile response time > 2s on {{ $labels.instance }}"
+
+      # ================= SYSTEM RESOURCES =================
+      - alert: HighJvmMemoryUsage
+        expr: jvm_memory_used_bytes{area="heap", job="cognitive-bank-app"} / jvm_memory_max_bytes{area="heap", job="cognitive-bank-app"} * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+          service: banking-app
+        annotations:
+          summary: "High JVM Heap Memory ({{ $value | humanizePercentage }})"
+          description: "JVM heap memory usage is above 85% on {{ $labels.instance }}"
+
+      - alert: HighSystemCpu
+        expr: system_cpu_usage{job="cognitive-bank-app"} * 100 > 80
+        for: 5m
+        labels:
+          severity: warning
+          service: banking-app
+        annotations:
+          summary: "High System CPU ({{ $value | humanizePercentage }})"
+          description: "System CPU usage is above 80% on {{ $labels.instance }}"
+
+      # ================= DATABASE ALERTS =================
+      - alert: DatabaseDown
+        expr: up{job="postgres"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: postgres
+          team: banking-devops
+        annotations:
+          summary: "PostgreSQL Database is DOWN"
+          description: "Database {{ $labels.instance }} is not responding"
+          runbook: "https://wiki.cognitive.bank/runbooks/db-down"
+
+      - alert: HighDatabaseConnections
+        expr: pg_stat_database_numbackends{datname="cognitive_bank"} > 50
+        for: 5m
+        labels:
+          severity: warning
+          service: postgres
+        annotations:
+          summary: "High Database Connections ({{ $value }})"
+          description: "Active database connections > 50 for cognitive_bank"
+
+      # ================= REDIS ALERTS =================
+      - alert: RedisDown
+        expr: up{job="redis"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: redis
+          team: banking-devops
+        annotations:
+          summary: "Redis Cache is DOWN"
+          description: "Redis instance {{ $labels.instance }} is not responding"
+
+      - alert: HighRedisMemory
+        expr: redis_memory_used_bytes / redis_memory_max_bytes * 100 > 90
+        for: 5m
+        labels:
+          severity: warning
+          service: redis
+        annotations:
+          summary: "High Redis Memory ({{ $value | humanizePercentage }})"
+          description: "Redis memory usage > 90% on {{ $labels.instance }}"
