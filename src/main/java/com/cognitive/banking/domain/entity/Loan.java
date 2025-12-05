@@ -3,9 +3,6 @@ package com.cognitive.banking.domain.entity;
 
 import com.cognitive.banking.domain.enums.LoanStatus;
 import com.cognitive.banking.domain.enums.LoanType;
-import jakarta.persistence.Column;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -92,8 +89,10 @@ public class Loan {
         this.totalAmountPaid = BigDecimal.ZERO;
     }
 
+    // New constructor that sets all required fields
     public Loan(String loanNumber, LoanType loanType, BigDecimal principalAmount,
-                BigDecimal interestRate, Integer termMonths, User user) {
+                BigDecimal interestRate, Integer termMonths, BigDecimal monthlyPayment,
+                User user, Account account) {
         this();
         this.loanNumber = loanNumber;
         this.loanType = loanType;
@@ -101,9 +100,36 @@ public class Loan {
         this.interestRate = interestRate;
         this.termMonths = termMonths;
         this.remainingTermMonths = termMonths;
+        this.monthlyPayment = monthlyPayment;
         this.remainingBalance = principalAmount;
-        this.user = user;
         this.maturityDate = LocalDate.now().plusMonths(termMonths);
+        this.user = user;
+        this.account = account;
+    }
+
+    // Factory method for easy creation from request
+    public static Loan createFromRequest(String loanNumber, LoanType loanType,
+                                         BigDecimal principalAmount, BigDecimal interestRate,
+                                         Integer termMonths, BigDecimal monthlyPayment,
+                                         User user, Account account, String purpose) {
+        Loan loan = new Loan();
+        loan.setLoanNumber(loanNumber);
+        loan.setLoanType(loanType);
+        loan.setLoanStatus(LoanStatus.PENDING);
+        loan.setPrincipalAmount(principalAmount);
+        loan.setInterestRate(interestRate);
+        loan.setTermMonths(termMonths);
+        loan.setRemainingTermMonths(termMonths);
+        loan.setMonthlyPayment(monthlyPayment);
+        loan.setRemainingBalance(principalAmount);
+        loan.setMaturityDate(LocalDate.now().plusMonths(termMonths));
+        loan.setUser(user);
+        loan.setAccount(account);
+        loan.setPurpose(purpose);
+        loan.setTotalInterestPaid(BigDecimal.ZERO);
+        loan.setTotalAmountPaid(BigDecimal.ZERO);
+        loan.setCreatedAt(LocalDateTime.now());
+        return loan;
     }
 
     // Getters and Setters
@@ -173,5 +199,19 @@ public class Loan {
     @PreUpdate
     public void preUpdate() {
         this.updatedAt = LocalDateTime.now();
+    }
+
+    // Business methods
+    public boolean isActive() {
+        return this.loanStatus == LoanStatus.ACTIVE ||
+                this.loanStatus == LoanStatus.DELINQUENT;
+    }
+
+    public boolean canBeApproved() {
+        return this.loanStatus == LoanStatus.PENDING;
+    }
+
+    public boolean canBeDisbursed() {
+        return this.loanStatus == LoanStatus.APPROVED;
     }
 }

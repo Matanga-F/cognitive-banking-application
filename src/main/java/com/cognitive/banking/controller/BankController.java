@@ -6,10 +6,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/bank")
+@RequestMapping("")
 public class BankController {
 
-    @GetMapping("/hello")
+    @GetMapping("/state")
     public ResponseEntity<String> hello() {
         return ResponseEntity.ok("Cognitive Bank API is alive");
     }

@@ -37,13 +37,15 @@ public class CreateLoanRequest {
     public CreateLoanRequest() {}
 
     public CreateLoanRequest(UUID userId, UUID accountId, LoanType loanType,
-                             BigDecimal principalAmount, BigDecimal interestRate, Integer termMonths) {
+                             BigDecimal principalAmount, BigDecimal interestRate, Integer termMonths,
+                             String purpose) {
         this.userId = userId;
         this.accountId = accountId;
         this.loanType = loanType;
         this.principalAmount = principalAmount;
         this.interestRate = interestRate;
         this.termMonths = termMonths;
+        this.purpose = purpose;
     }
 
     // Getters and Setters
@@ -70,4 +72,12 @@ public class CreateLoanRequest {
 
     public String getCollateralDescription() { return collateralDescription; }
     public void setCollateralDescription(String collateralDescription) { this.collateralDescription = collateralDescription; }
+
+    // Validation helper
+    public boolean isValid() {
+        return userId != null && accountId != null && loanType != null &&
+                principalAmount != null && principalAmount.compareTo(BigDecimal.ZERO) > 0 &&
+                interestRate != null && interestRate.compareTo(BigDecimal.ZERO) >= 0 &&
+                termMonths != null && termMonths > 0;
+    }
 }

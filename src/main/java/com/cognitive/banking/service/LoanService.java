@@ -68,18 +68,26 @@ public class LoanService {
                 request.getTermMonths()
         );
 
-        // Create loan entity
+        // Create loan entity with ALL required fields
         Loan loan = new Loan();
         loan.setLoanNumber(loanNumber);
         loan.setLoanType(request.getLoanType());
+        loan.setLoanStatus(LoanStatus.PENDING);  // REQUIRED: NOT NULL
         loan.setPrincipalAmount(request.getPrincipalAmount());
         loan.setInterestRate(request.getInterestRate());
         loan.setTermMonths(request.getTermMonths());
+        loan.setRemainingTermMonths(request.getTermMonths());  // REQUIRED: NOT NULL
         loan.setMonthlyPayment(monthlyPayment);
+        loan.setRemainingBalance(request.getPrincipalAmount());  // REQUIRED: NOT NULL
+        loan.setMaturityDate(LocalDate.now().plusMonths(request.getTermMonths()));  // REQUIRED: NOT NULL
         loan.setUser(user);
         loan.setAccount(account);
         loan.setPurpose(request.getPurpose());
         loan.setCollateralDescription(request.getCollateralDescription());
+
+        // Initialize other fields
+        loan.setTotalInterestPaid(BigDecimal.ZERO);
+        loan.setTotalAmountPaid(BigDecimal.ZERO);
 
         Loan savedLoan = loanRepository.save(loan);
         System.out.println("Loan application created successfully with number: " + savedLoan.getLoanNumber());
