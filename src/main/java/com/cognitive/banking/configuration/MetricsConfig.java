@@ -164,6 +164,8 @@ public class MetricsConfig {
                 .baseUnit("currency")
                 .tag("domain", "accounts")
                 .register(meterRegistry);
+        
+        
     }
 
     // ================= Getters for metrics =================
