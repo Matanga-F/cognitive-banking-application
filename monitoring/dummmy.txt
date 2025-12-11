@@ -1,0 +1,120 @@
+
+#services:
+
+
+#
+
+#
+
+#
+#  # ======================================================
+#  # 🔹 MONITORING STACK
+#  # ======================================================
+#
+#  prometheus:
+#    image: prom/prometheus
+#    container_name: cognitive-bank-prometheus
+#    volumes:
+#      - ./monitoring/prometheus:/etc/prometheus
+#      - prometheus_data:/prometheus
+#    command:
+#      - "--config.file=/etc/prometheus/prometheus.yml"
+#    ports:
+#      - "9090:9090"
+#    networks:
+#      - bank-network
+#    depends_on:
+#      - cognitive-bank-application
+#
+#  grafana:
+#    image: grafana/grafana
+#    container_name: cognitive-bank-grafana
+#    env_file: .env
+#    environment:
+#      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+#      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+#      GF_USERS_ALLOW_SIGN_UP: "false"
+#    volumes:
+#      - grafana_data:/var/lib/grafana
+#      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+#      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards
+#    ports:
+#      - "3000:3000"
+#    networks:
+#      - bank-network
+#    depends_on:
+#      - prometheus
+#
+#  # ------------------ POSTGRES EXPORTER ------------------
+#  postgres-exporter:
+#    image: prometheuscommunity/postgres-exporter
+#    container_name: cognitive-bank-postgres-exporter
+#    env_file: .env
+#    environment:
+#      DATA_SOURCE_NAME: "postgresql://${DB_USERNAME}:${DB_PASSWORD}@postgres:5432/${DB_NAME}?sslmode=disable"
+#    ports:
+#      - "9187:9187"
+#    networks:
+#      - bank-network
+#    depends_on:
+#      - postgres
+#
+#  # ------------------ REDIS EXPORTER ------------------
+#  redis-exporter:
+#    image: oliver006/redis_exporter
+#    container_name: cognitive-bank-redis-exporter
+#    environment:
+#      REDIS_ADDR: "redis://:${REDIS_PASSWORD}@redis:6379"
+#    ports:
+#      - "9121:9121"
+#    networks:
+#      - bank-network
+#    depends_on:
+#      - redis
+#
+#  # ------------------ NODE EXPORTER ------------------
+#  node-exporter:
+#    image: prom/node-exporter
+#    container_name: cognitive-bank-node-exporter
+#    ports:
+#      - "9100:9100"
+#    networks:
+#      - bank-network
+#
+#  # ------------------ CADVISOR ------------------
+#  cadvisor:
+#    image: gcr.io/cadvisor/cadvisor
+#    container_name: cognitive-bank-cadvisor
+#    ports:
+#      - "8088:8080"
+#    volumes:
+#      - /:/rootfs:ro
+#      - /var/run:/var/run:ro
+#      - /sys:/sys:ro
+#      - /var/lib/docker/:/var/lib/docker:ro
+#    networks:
+#      - bank-network
+#
+#  # ------------------ ALERTMANAGER ------------------
+#  alertmanager:
+#    image: prom/alertmanager
+#    container_name: cognitive-bank-alertmanager
+#    volumes:
+#      - ./monitoring/alertmanager:/etc/alertmanager
+#    ports:
+#      - "9093:9093"
+#    networks:
+#      - bank-network
+#    depends_on:
+#      - prometheus
+#
+## ======================================================
+## 🔹 VOLUMES
+## ======================================================
+#volumes:
+#  postgres_data:
+#  redis_data:
+#  prometheus_data:
+#  grafana_data:
+#
+

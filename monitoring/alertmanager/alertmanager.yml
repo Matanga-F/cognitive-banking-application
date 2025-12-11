@@ -1,0 +1,61 @@
+# ========================
+# Alertmanager Configuration
+# ========================
+
+global:
+  resolve_timeout: 5m
+  smtp_smarthost: 'smtp.example.com:587'   # optional if using email
+  smtp_from: 'alertmanager@example.com'
+  smtp_auth_username: 'username'
+  smtp_auth_password: 'password'
+
+# ========================
+# Routes
+# ========================
+route:
+  receiver: 'default-receiver'
+  group_by: ['alertname', 'service']
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 3h
+  routes:
+    - match:
+        severity: critical
+      receiver: 'critical-team'
+    - match:
+        severity: warning
+      receiver: 'devops-team'
+
+# ========================
+# Receivers
+# ========================
+receivers:
+  - name: 'default-receiver'
+    webhook_configs:
+      - url: 'http://localhost:5001/'   # optional webhook
+  - name: 'critical-team'
+    email_configs:
+      - to: 'devops-critical@example.com'
+        send_resolved: true
+  - name: 'devops-team'
+    email_configs:
+      - to: 'devops@example.com'
+        send_resolved: true
+
+# ========================
+# Inhibit rules
+# ========================
+inhibit_rules:
+  # Suppress warnings when critical alert exists
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['service']
+
+# ========================
+# Load alert rules from Prometheus (optional)
+# ========================
+# This can be used if you have alert rules in Prometheus itself
+templates:
+  - '/etc/alertmanager/*.tmpl'

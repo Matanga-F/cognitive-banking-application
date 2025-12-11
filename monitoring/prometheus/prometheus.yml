@@ -5,32 +5,34 @@ global:
     monitor: 'cognitive-banking'
     environment: 'docker'
 
-# Alerting rules configuration
+# ======================================================
+# 🔔 ALERT RULES
+# ======================================================
 rule_files:
   - "alert.rules.yml"
 
-# Alertmanager configuration (we'll add this later)
-alerting:
-  alertmanagers:
-    - static_configs:
-        - targets:
-          # - alertmanager:9093
-
-# Scrape configurations
+# ======================================================
+# 🔍 SCRAPE CONFIGS
+# ======================================================
 scrape_configs:
-  # Prometheus self-monitoring
+
+  # -------------------
+  # PROMETHEUS ITSELF
+  # -------------------
   - job_name: 'prometheus'
+    scrape_interval: 30s
     static_configs:
       - targets: ['localhost:9090']
-    scrape_interval: 30s
 
-  # Spring Boot Application - IMPORTANT: Add the context path!
-  - job_name: 'cognitive-bank-app'
-    metrics_path: '/api/cognitive/bank/actuator/prometheus'  # FIXED PATH!
+  # -------------------
+  # SPRING BOOT APP (FIXED)
+  # -------------------
+  - job_name: 'cognitive-banking-application'
+    metrics_path: '/api/cognitive/bank/actuator/prometheus'
     scrape_interval: 10s
     static_configs:
       - targets: ['cognitive-bank-app:8080']
-    # Relabeling for better metrics
+
     relabel_configs:
       - source_labels: [__address__]
         target_label: instance
@@ -40,35 +42,43 @@ scrape_configs:
         target_label: job
         replacement: 'cognitive-banking-application'
 
-  # Database monitoring (PostgreSQL)
+  # -------------------
+  # POSTGRES EXPORTER
+  # -------------------
   - job_name: 'postgres'
+    scrape_interval: 30s
     static_configs:
       - targets: ['postgres-exporter:9187']
         labels:
           service: 'postgresql'
           db: 'cognitive_bank'
-    scrape_interval: 30s
 
-  # Redis monitoring
+  # -------------------
+  # REDIS EXPORTER
+  # -------------------
   - job_name: 'redis'
+    scrape_interval: 30s
     static_configs:
       - targets: ['redis-exporter:9121']
         labels:
           service: 'redis'
           instance: 'cognitive-bank-redis'
-    scrape_interval: 30s
 
-  # Node (host) monitoring
+  # -------------------
+  # NODE EXPORTER
+  # -------------------
   - job_name: 'node-exporter'
+    scrape_interval: 30s
     static_configs:
       - targets: ['node-exporter:9100']
         labels:
           service: 'node-exporter'
           instance: 'docker-host'
-    scrape_interval: 30s
 
-  # cAdvisor for container monitoring (optional)
+  # -------------------
+  # CADVISOR
+  # -------------------
   - job_name: 'cadvisor'
+    scrape_interval: 30s
     static_configs:
       - targets: ['cadvisor:8080']
-    scrape_interval: 30s
