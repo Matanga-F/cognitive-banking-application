@@ -6,22 +6,23 @@ WORKDIR /workspace
 
 # Cache dependencies first
 COPY pom.xml mvnw* ./
-COPY .mvn .mvn
-RUN mvn -B -DskipTests dependency:go-offline
+COPY .mvn/ .mvn/
+RUN ./mvnw -B -DskipTests dependency:go-offline
 
 # Copy full source
-COPY src ./src
+COPY src/ ./src/
 
 # Build JAR
-RUN mvn -B -DskipTests package
+RUN ./mvnw -B -DskipTests package
 
 # =========================
 # 🔹 RUNTIME STAGE
 # =========================
 FROM eclipse-temurin:17-jdk-jammy
+WORKDIR /app
 
-ARG JAR_FILE=/workspace/target/*.jar
-COPY --from=build ${JAR_FILE} /app/app.jar
+# Copy JAR from build stage
+COPY --from=build /workspace/target/*.jar /app/app.jar
 
 EXPOSE 8080
 ENV JAVA_OPTS=""
