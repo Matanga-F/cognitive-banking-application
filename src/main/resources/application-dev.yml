@@ -23,7 +23,6 @@ spring:
       host: localhost
       timeout: 2000ms
       port: 6379
-
 server:
   port: 8080
   servlet:

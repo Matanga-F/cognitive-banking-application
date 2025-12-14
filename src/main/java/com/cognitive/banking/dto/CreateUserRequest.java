@@ -3,6 +3,8 @@ package com.cognitive.banking.dto;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import  com.cognitive.banking.domain.enums.UserRole;
+import  com.cognitive.banking.domain.enums.UserStatus;
 
 public class CreateUserRequest {
     @NotBlank(message = "First name is required")
@@ -25,6 +27,25 @@ public class CreateUserRequest {
     @Size(min = 6, message = "Password must be at least 6 characters")
     private String password;
 
+    @Size(min = 6, max = 12)
+    private String role;
+    @NotBlank(message = "User status is required")
+    @Size(min = 6, max = 12, message = "Invalid Input")
+    private String status;
+
+    // Constructor
+    public CreateUserRequest() {}
+
+    public  CreateUserRequest(String firstName, String lastName, String email,  String password, String phoneNumber, String role, String status ){
+        this.firstName = firstName;
+        this.lastName = lastName;
+        this.email = email;
+        this.password = password;
+        this.phoneNumber = phoneNumber;
+        this.role = role;
+        this.status = status;
+    }
+
     // Getters and Setters
     public String getFirstName() { return firstName; }
     public void setFirstName(String firstName) { this.firstName = firstName; }
@@ -37,6 +58,12 @@ public class CreateUserRequest {
 
     public String getPhoneNumber() { return phoneNumber; }
     public void setPhoneNumber(String phoneNumber) { this.phoneNumber = phoneNumber; }
+
+    public  String getRole() { return role; }
+    public void setRole(String role) { this.role = role; }
+
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
 
     public String getPassword() { return password; }
     public void setPassword(String password) { this.password = password; }

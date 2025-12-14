@@ -68,8 +68,8 @@ public class UserService {
         String encryptedPassword = passwordEncoder.encode(request.getPassword());
         user.setPassword(encryptedPassword);
 
-        user.setStatus("ACTIVE");
-        user.setRole("CUSTOMER");
+        user.setStatus(request.getStatus());
+        user.setRole(request.getRole());
 
         User savedUser = userRepository.save(user);
         logger.info("User created successfully with ID: {}", savedUser.getUserId());
