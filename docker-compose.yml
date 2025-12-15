@@ -99,7 +99,7 @@ services:
       retries: 6
       start_period: 40s
 # =======================
-# Volumes & Netwo
+# Volumes & Network
 # =======================
 volumes:
   postgres_data:
