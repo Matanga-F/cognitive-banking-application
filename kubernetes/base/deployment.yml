@@ -5,7 +5,6 @@ metadata:
   namespace: cognitive-bank
 spec:
   replicas: 2
-  revisionHistoryLimit: 5
   selector:
     matchLabels:
       app: cognitive-banking-backend
@@ -13,91 +12,82 @@ spec:
     metadata:
       labels:
         app: cognitive-banking-backend
-        role: backend
     spec:
       containers:
         - name: backend
           image: fulufhelom/cognitive-banking-application:latest
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
+
           ports:
             - containerPort: 8080
 
-          # ✅ Load all env vars from Secret + ConfigMap
-          envFrom:
-            - secretRef:
-                name: cognitive-backend-secrets
-            - configMapRef:
-                name: backend-config
-
-          # ✅ Explicit Spring Boot datasource config
+          # --------------------------
+          # ENV VARIABLES FROM SECRETS
+          # --------------------------
           env:
+            # Spring Boot DB
             - name: SPRING_DATASOURCE_URL
-              value: jdbc:postgresql://postgres:5432/cognitive_bank
-
+              value: jdbc:postgresql://cognitive-postgres-bank:5432/cognitive_bank
             - name: SPRING_DATASOURCE_USERNAME
               valueFrom:
                 secretKeyRef:
                   name: cognitive-backend-secrets
                   key: DB_USERNAME
-
             - name: SPRING_DATASOURCE_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: cognitive-backend-secrets
                   key: DB_PASSWORD
 
-            # ✅ Redis config
+            # Redis
             - name: SPRING_REDIS_HOST
               valueFrom:
                 secretKeyRef:
                   name: cognitive-backend-secrets
                   key: REDIS_HOST
-
             - name: SPRING_REDIS_PORT
               valueFrom:
                 secretKeyRef:
                   name: cognitive-backend-secrets
                   key: REDIS_PORT
-
             - name: SPRING_REDIS_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: cognitive-backend-secrets
                   key: REDIS_PASSWORD
 
-            # ✅ Set Spring Boot context path
-            - name: SERVER_SERVLET_CONTEXT_PATH
-              value: /api/cognitive/bank
+            # Application settings
+            - name: SPRING_PROFILES_ACTIVE
+              valueFrom:
+                secretKeyRef:
+                  name: cognitive-backend-secrets
+                  key: SPRING_PROFILES_ACTIVE
+            - name: SERVER_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: cognitive-backend-secrets
+                  key: SERVER_PORT
 
-          # ✅ Startup probe
-          startupProbe:
+          # --------------------------
+          # LIVENESS & READINESS PROBES
+          # --------------------------
+          readinessProbe:
             httpGet:
               path: /api/cognitive/bank/actuator/health
               port: 8080
-            failureThreshold: 30
-            periodSeconds: 5
+            initialDelaySeconds: 30
+            periodSeconds: 10
 
-          # ✅ Liveness probe
           livenessProbe:
             httpGet:
-              path: /api/cognitive/bank/actuator/health/liveness
+              path: /api/cognitive/bank/actuator/health
               port: 8080
-            initialDelaySeconds: 10
+            initialDelaySeconds: 60
             periodSeconds: 20
-            timeoutSeconds: 5
-            failureThreshold: 3
 
-          # ✅ Readiness probe
-          readinessProbe:
-            httpGet:
-              path: /api/cognitive/bank/actuator/health/readiness
-              port: 8080
-            initialDelaySeconds: 5
-            periodSeconds: 10
-            timeoutSeconds: 3
-            failureThreshold: 3
-
-          # Resource limits
+          # --------------------------
+          # RESOURCES
+          # --------------------------
           resources:
             requests:
               cpu: "250m"

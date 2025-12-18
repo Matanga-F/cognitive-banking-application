@@ -1,0 +1,29 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: backend-egress
+  namespace: cognitive-bank
+spec:
+  podSelector:
+    matchLabels:
+      app: cognitive-banking-backend
+
+  policyTypes:
+    - Egress
+
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: cognitive-postgres-bank
+      ports:
+        - protocol: TCP
+          port: 5432
+
+    - to:
+        - podSelector:
+            matchLabels:
+              app: cognitive-redis-cache
+      ports:
+        - protocol: TCP
+          port: 6379

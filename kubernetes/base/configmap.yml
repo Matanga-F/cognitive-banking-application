@@ -1,8 +1,15 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: backend-config
+  name: cognitive-backend-config
   namespace: cognitive-bank
 data:
-  RUNNING_IN_DOCKER: "false"
-  SPRING_PROFILES_ACTIVE: "kubernetes"
+  SPRING_PROFILES_ACTIVE: kubernetes
+  SERVER_PORT: "8080"
+
+  DB_HOST: cognitive-postgres-bank
+  DB_PORT: "5432"
+  DB_NAME: cognitive_bank
+
+  REDIS_HOST: cognitive-redis-cache
+  REDIS_PORT: "6379"
