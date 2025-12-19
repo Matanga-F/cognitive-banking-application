@@ -7,9 +7,11 @@ data:
   SPRING_PROFILES_ACTIVE: kubernetes
   SERVER_PORT: "8080"
 
-  DB_HOST: cognitive-postgres-bank
+  # Correct Postgres host
+  DB_HOST: cognitive-postgres-bank.cognitive-bank.svc.cluster.local
   DB_PORT: "5432"
   DB_NAME: cognitive_bank
 
-  REDIS_HOST: cognitive-redis-cache
+  # Correct Redis host
+  REDIS_HOST: cognitive-redis-cache.cognitive-bank.svc.cluster.local
   REDIS_PORT: "6379"

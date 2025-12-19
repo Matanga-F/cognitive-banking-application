@@ -1,0 +1,47 @@
+[
+  {"type":"DEPOSIT","accountId":"a2e08da8-ae2e-4bb7-9f09-adca40ec8b6f","transactionId":"a0c48f62-cd68-4d25-abcd-967a66590084"}
+,
+  {"type":"DEPOSIT","accountId":"f05e06fd-50a9-434d-9b1a-f5b022758fed","transactionId":"4e5e5991-3d7f-4767-b394-6521e78f0022"}
+,
+  {"type":"TRANSFER","from":"a2e08da8-ae2e-4bb7-9f09-adca40ec8b6f","to":"f05e06fd-50a9-434d-9b1a-f5b022758fed","transactionId":"d8075038-780a-4a9b-b7fb-d362a7766004"}
+,
+  {"type":"DEPOSIT","accountId":"617cfaee-2bb5-4941-baf5-fa08a3d7c560","transactionId":"0cd07581-64e5-458d-8e87-634ce3a46ed0"}
+,
+  {"type":"TRANSFER","from":"f05e06fd-50a9-434d-9b1a-f5b022758fed","to":"617cfaee-2bb5-4941-baf5-fa08a3d7c560","transactionId":"f5c6bc60-0489-4c0d-b0f9-55babf13bc57"}
+,
+  {"type":"DEPOSIT","accountId":"f5850855-4a07-4e40-b0d5-90ebfa57add6","transactionId":"d45b7348-70ef-4c45-95e4-d421dcca9aec"}
+,
+  {"type":"TRANSFER","from":"617cfaee-2bb5-4941-baf5-fa08a3d7c560","to":"f5850855-4a07-4e40-b0d5-90ebfa57add6","transactionId":"ba8f9a56-ce35-4350-8d07-569ec3975e18"}
+,
+  {"type":"DEPOSIT","accountId":"c827e79b-05df-45c4-b916-beb24eda88c3","transactionId":"5e537063-8ca9-421e-9853-4deeaf9933b2"}
+,
+  {"type":"TRANSFER","from":"f5850855-4a07-4e40-b0d5-90ebfa57add6","to":"c827e79b-05df-45c4-b916-beb24eda88c3","transactionId":"63c30a2f-7ca6-4f0f-ad66-ec77cba0881b"}
+,
+  {"type":"DEPOSIT","accountId":"25551ca1-2609-49ef-845e-540e6449757f","transactionId":"0fc7c953-a12d-4d7f-909e-e573ce1f763e"}
+,
+  {"type":"TRANSFER","from":"c827e79b-05df-45c4-b916-beb24eda88c3","to":"25551ca1-2609-49ef-845e-540e6449757f","transactionId":"0c20431f-226a-45d2-91eb-46c5f1c1d3ea"}
+,
+  {"type":"DEPOSIT","accountId":"79d24a74-67f3-40a5-942a-6a1e48879c1f","transactionId":"332c24f1-31fa-49d0-859d-3e47349be5a5"}
+,
+  {"type":"TRANSFER","from":"25551ca1-2609-49ef-845e-540e6449757f","to":"79d24a74-67f3-40a5-942a-6a1e48879c1f","transactionId":"7d0514c4-2921-4ee9-aca1-be176c76583d"}
+,
+  {"type":"DEPOSIT","accountId":"6fa82ef5-4a72-4ce3-8f56-6efb51477d30","transactionId":"c8fe3e2d-bf49-4b55-8f2e-8db958899f32"}
+,
+  {"type":"TRANSFER","from":"79d24a74-67f3-40a5-942a-6a1e48879c1f","to":"6fa82ef5-4a72-4ce3-8f56-6efb51477d30","transactionId":"45d6c130-ae9b-4ee9-bda8-ad3a74189b30"}
+,
+  {"type":"DEPOSIT","accountId":"c8bd6c23-78a2-45c0-b9e9-1c68651f4645","transactionId":"4942a288-dce5-4c9f-bd89-dfb4eede14d9"}
+,
+  {"type":"TRANSFER","from":"6fa82ef5-4a72-4ce3-8f56-6efb51477d30","to":"c8bd6c23-78a2-45c0-b9e9-1c68651f4645","transactionId":"9a7a2b87-5c9b-422b-a3fb-5b9d2f66555b"}
+,
+  {"type":"DEPOSIT","accountId":"a21e50a9-1a76-46a1-a9e5-4e2fb4dffa7c","transactionId":"2e4e3b59-6922-45a1-a5bb-5082cea1055b"}
+,
+  {"type":"TRANSFER","from":"c8bd6c23-78a2-45c0-b9e9-1c68651f4645","to":"a21e50a9-1a76-46a1-a9e5-4e2fb4dffa7c","transactionId":"6d4ee464-f7d4-4c2c-bdd4-2a34927d40df"}
+,
+  {"type":"DEPOSIT","accountId":"91776840-f768-4d2c-966e-e22a323177d9","transactionId":"4c0ad05a-3083-46f2-a7b7-2c14ec02ba6a"}
+,
+  {"type":"TRANSFER","from":"a21e50a9-1a76-46a1-a9e5-4e2fb4dffa7c","to":"91776840-f768-4d2c-966e-e22a323177d9","transactionId":"445e36e1-a17a-4f14-8eec-144f7c5b9219"}
+,
+  {"type":"DEPOSIT","accountId":"894cb948-74e6-4a7f-9a4e-3b2764cad537","transactionId":"2b304663-9fb3-4d24-a8fc-b1cea2eee347"}
+,
+  {"type":"TRANSFER","from":"91776840-f768-4d2c-966e-e22a323177d9","to":"894cb948-74e6-4a7f-9a4e-3b2764cad537","transactionId":"132e2133-7908-4a8e-b4e9-8d07d5c8d423"}
+]

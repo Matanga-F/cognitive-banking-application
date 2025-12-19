@@ -4,8 +4,10 @@ metadata:
   name: cognitive-redis-cache
   namespace: cognitive-bank
 spec:
-  clusterIP: None
   selector:
     app: cognitive-redis-cache
   ports:
-    - port: 6379
+    - protocol: TCP
+      port: 6379
+      targetPort: 6379
+  type: ClusterIP

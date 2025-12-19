@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-config
+  namespace: cognitive-bank
+data:
+  DB_HOST: cognitive-postgres-bank
+  DB_NAME: cognitive_bank
+  DB_USERNAME: desta

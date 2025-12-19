@@ -1,50 +1,233 @@
+# =========================================================
+# BASE CONFIG (ALL PROFILES)
+# =========================================================
 spring:
   application:
     name: cognitive-banking-application
 
   main:
-    lazy-initialization: true
-    banner-mode: "off"
+    allow-bean-definition-overriding: true
+
+server:
+  port: ${SERVER_PORT:8080}
+  servlet:
+    context-path: /api/cognitive/bank
+  compression:
+    enabled: true
+    mime-types: >
+      text/html,text/xml,text/plain,text/css,
+      text/javascript,application/javascript,application/json
+    min-response-size: 1024
+
+logging:
+  level:
+    root: INFO
+    com.cognitive.banking: INFO
+
+management:
+  endpoints:
+    web:
+      base-path: /actuator
+      exposure:
+        include: health,info,metrics,prometheus,env
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: always
+      show-components: always
+    prometheus:
+      enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+  health:
+    db:
+      enabled: true
+    diskspace:
+      enabled: true
+    redis:
+      enabled: true
+    defaults:
+      enabled: true
+
+# =========================================================
+# DEV PROFILE — H2 (AUTO CREATE TABLES)
+# =========================================================
+---
+spring:
+  config:
+    activate:
+      on-profile: dev
+
+  datasource:
+    url: jdbc:h2:mem:bankdb;MODE=PostgreSQL;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+    hikari:
+      maximum-pool-size: 10
+      connection-timeout: 30000
+
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        jdbc.batch_size: 20
+
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+  flyway:
+    enabled: false
+
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      timeout: 2s
+
+logging:
+  level:
+    root: INFO
+    com.cognitive.banking: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.orm.jdbc.bind: TRACE
+
+management:
+  metrics:
+    tags:
+      environment: dev
+
+# =========================================================
+# DOCKER PROFILE — POSTGRES + REDIS (kept as-is for local Docker Compose)
+# =========================================================
+---
+spring:
+  config:
+    activate:
+      on-profile: docker
+
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://postgres:5432/cognitive_bank}
+    username: ${SPRING_DATASOURCE_USERNAME:desta}
+    password: ${SPRING_DATASOURCE_PASSWORD:change_me}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 2
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        jdbc.batch_size: 25
+        order_inserts: true
+        order_updates: true
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+    validate-on-migrate: true
+
+  data:
+    redis:
+      host: ${SPRING_REDIS_HOST:redis}
+      port: ${SPRING_REDIS_PORT:6379}
+      password: ${SPRING_REDIS_PASSWORD:redispass123}
+      database: ${REDIS_DATABASE:0}
+      timeout: 2s
+      lettuce:
+        pool:
+          max-active: 10
+          max-idle: 5
+          min-idle: 1
+
+logging:
+  level:
+    root: INFO
+    com.cognitive.banking: ${LOG_LEVEL:INFO}
+    org.hibernate: WARN
+  file:
+    name: logs/cognitive-bank.log
+    max-size: 10MB
+    max-history: 30
+
+management:
+  metrics:
+    tags:
+      environment: production
+
+# =========================================================
+# KUBERNETES PROFILE — FULLY DRIVEN BY CONFIGMAP + SECRET
+# =========================================================
+---
+spring:
+  config:
+    activate:
+      on-profile: kubernetes
 
   datasource:
     url: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 2
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
 
   jpa:
-    open-in-view: false
-    show-sql: false
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
       ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        jdbc.batch_size: 25
+        order_inserts: true
+        order_updates: true
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+    validate-on-migrate: true
 
   data:
     redis:
       host: ${REDIS_HOST}
       port: ${REDIS_PORT}
-      password: ${REDIS_PASSWORD}
-      timeout: 1000ms
-      repositories:
-        enabled: false
-
-server:
-  port: 8080
-  shutdown: graceful
-  servlet:
-    context-path: /api/cognitive/bank
+      password: ${REDIS_PASSWORD:}   # Optional — will be empty if not set in Secret
+      database: ${REDIS_DATABASE:0}
+      timeout: 2s
+      lettuce:
+        pool:
+          max-active: 10
+          max-idle: 5
+          min-idle: 1
 
 logging:
   level:
     root: INFO
+    com.cognitive.banking: ${LOG_LEVEL:INFO}
 
 management:
-  endpoint:
-    health:
-      probes:
-        enabled: true
-      show-details: always
-
-  endpoints:
-    web:
-      exposure:
-        include: health,info,prometheus
+  metrics:
+    tags:
+      environment: kubernetes

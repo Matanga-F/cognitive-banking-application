@@ -1,0 +1,31 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: postgres-backup
+  namespace: cognitive-bank
+spec:
+  schedule: "* */23 * * *"   # every 10 minutes
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: postgres-backup
+              image: postgres:16-alpine
+              command: ["/bin/sh", "-c"]
+              args:
+                - |
+                  PGPASSWORD=$DB_PASSWORD \
+                  pg_dump -h $DB_HOST -U $DB_USERNAME $DB_NAME \
+                  > /backup/backup-$(date +%Y%m%d%H%M%S).sql
+              envFrom:
+                - secretRef:
+                    name: cognitive-backend-secrets
+              volumeMounts:
+                - name: backup-storage
+                  mountPath: /backup
+          restartPolicy: OnFailure
+          volumes:
+            - name: backup-storage
+              persistentVolumeClaim:
+                claimName: postgres-backup-pvc
