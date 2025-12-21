@@ -8,6 +8,9 @@ spring:
   main:
     allow-bean-definition-overriding: true
 
+  shutdown:
+    grace-period: 30s   # Graceful shutdown for K8s preStop
+
 server:
   port: ${SERVER_PORT:8080}
   servlet:
@@ -23,6 +26,7 @@ logging:
   level:
     root: INFO
     com.cognitive.banking: INFO
+    org.springframework: WARN
 
 management:
   endpoints:
@@ -36,23 +40,21 @@ management:
         enabled: true
       show-details: always
       show-components: always
-    prometheus:
-      enabled: true
   metrics:
     tags:
       application: ${spring.application.name}
+
+  # Default health checks — overridden per profile where needed
   health:
+    defaults:
+      enabled: true
     db:
       enabled: true
     diskspace:
       enabled: true
-    redis:
-      enabled: true
-    defaults:
-      enabled: true
 
 # =========================================================
-# DEV PROFILE — H2 (AUTO CREATE TABLES)
+# DEV PROFILE — H2 (IN-MEMORY, AUTO CREATE TABLES)
 # =========================================================
 ---
 spring:
@@ -61,13 +63,12 @@ spring:
       on-profile: dev
 
   datasource:
-    url: jdbc:h2:mem:bankdb;MODE=PostgreSQL;DB_CLOSE_DELAY=-1
+    url: jdbc:h2:mem:bankdb;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
     driver-class-name: org.h2.Driver
     username: sa
     password:
     hikari:
       maximum-pool-size: 10
-      connection-timeout: 30000
 
   jpa:
     database-platform: org.hibernate.dialect.H2Dialect
@@ -91,7 +92,7 @@ spring:
     redis:
       host: localhost
       port: 6379
-      timeout: 2s
+      timeout: 5s   # Slightly higher for local dev
 
 logging:
   level:
@@ -106,7 +107,7 @@ management:
       environment: dev
 
 # =========================================================
-# DOCKER PROFILE — POSTGRES + REDIS (kept as-is for local Docker Compose)
+# DOCKER PROFILE — POSTGRES + REDIS (LOCAL DOCKER-COMPOSE)
 # =========================================================
 ---
 spring:
@@ -130,7 +131,6 @@ spring:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
       ddl-auto: validate
-    show-sql: false
     properties:
       hibernate:
         jdbc.batch_size: 25
@@ -149,7 +149,7 @@ spring:
       port: ${SPRING_REDIS_PORT:6379}
       password: ${SPRING_REDIS_PASSWORD:redispass123}
       database: ${REDIS_DATABASE:0}
-      timeout: 2s
+      timeout: 5s
       lettuce:
         pool:
           max-active: 10
@@ -161,18 +161,17 @@ logging:
     root: INFO
     com.cognitive.banking: ${LOG_LEVEL:INFO}
     org.hibernate: WARN
-  file:
-    name: logs/cognitive-bank.log
-    max-size: 10MB
-    max-history: 30
 
 management:
   metrics:
     tags:
-      environment: production
+      environment: docker
+  health:
+    redis:
+      enabled: true   # OK in docker — usually fast
 
 # =========================================================
-# KUBERNETES PROFILE — FULLY DRIVEN BY CONFIGMAP + SECRET
+# KUBERNETES PROFILE — FULLY EXTERNALIZED + STABLE PROBES
 # =========================================================
 ---
 spring:
@@ -181,7 +180,7 @@ spring:
       on-profile: kubernetes
 
   datasource:
-    url: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}
+    url: jdbc:postgresql://${DB_HOST:cognitive-postgres-bank}:${DB_PORT:5432}/${DB_NAME:cognitive_bank}
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
@@ -196,7 +195,6 @@ spring:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
       ddl-auto: validate
-    show-sql: false
     properties:
       hibernate:
         jdbc.batch_size: 25
@@ -211,11 +209,12 @@ spring:
 
   data:
     redis:
-      host: ${REDIS_HOST}
-      port: ${REDIS_PORT}
-      password: ${REDIS_PASSWORD:}   # Optional — will be empty if not set in Secret
+      host: ${REDIS_HOST:cognitive-redis-cache-0.cognitive-redis-cache-headless.cognitive-bank.svc.cluster.local}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}   # Empty if not set
       database: ${REDIS_DATABASE:0}
-      timeout: 2s
+      timeout: 10s                   # Increased — network in K8s can be slower
+      connect-timeout: 10s
       lettuce:
         pool:
           max-active: 10
@@ -226,8 +225,15 @@ logging:
   level:
     root: INFO
     com.cognitive.banking: ${LOG_LEVEL:INFO}
+    org.hibernate: WARN
+    io.lettuce.core: WARN          # Reduce noisy Redis logs
 
 management:
   metrics:
     tags:
       environment: kubernetes
+
+  # CRITICAL FIX: Disable slow Redis health check in Kubernetes
+  health:
+    redis:
+      enabled: false    # ← This removes the 15-20s delay from /health endpoints

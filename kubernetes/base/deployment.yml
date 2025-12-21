@@ -16,43 +16,49 @@ spec:
       containers:
         - name: backend
           image: fulufhelom/cognitive-banking-application:latest
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080
 
-          # --------------------------
-          # ENV VARIABLES FROM CONFIGMAP + SECRET
-          # --------------------------
           envFrom:
             - configMapRef:
                 name: cognitive-backend-config
             - secretRef:
                 name: cognitive-backend-secrets
 
-          # --------------------------
-          # LIVENESS & READINESS PROBES
-          # --------------------------
+          # Add JVM tuning to prevent heap from eating all container memory
+          env:
+            - name: JAVA_TOOL_OPTIONS
+              value: "-Xms384m -Xmx1024m -XX:+UseG1GC -XX:MaxMetaspaceSize=128m -XX:+ExitOnOutOfMemoryError"
+
           readinessProbe:
+            httpGet:
+              path: /api/cognitive/bank/actuator/health/readiness
+              port: 8080
+            initialDelaySeconds: 180
+            periodSeconds: 30
+            failureThreshold: 3
+
+          livenessProbe:
+            httpGet:
+              path: /api/cognitive/bank/actuator/health/liveness
+              port: 8080
+            initialDelaySeconds: 180
+            periodSeconds: 30
+            failureThreshold: 3
+
+          startupProbe:
             httpGet:
               path: /api/cognitive/bank/actuator/health
               port: 8080
             initialDelaySeconds: 30
             periodSeconds: 10
+            failureThreshold: 30   # Increased – gives more time if needed
 
-          livenessProbe:
-            httpGet:
-              path: /api/cognitive/bank/actuator/health
-              port: 8080
-            initialDelaySeconds: 60
-            periodSeconds: 20
-
-          # --------------------------
-          # RESOURCES
-          # --------------------------
           resources:
             requests:
-              cpu: "250m"
-              memory: "512Mi"
+              cpu: "500m"    # Increased a bit for stability
+              memory: "1Gi"  # Give it guaranteed 1Gi
             limits:
-              cpu: "500m"
-              memory: "1Gi"
+              cpu: "1000m"    # 1 full core
+              memory: "2Gi"  # THIS IS THE KEY FIX – double the previous limit

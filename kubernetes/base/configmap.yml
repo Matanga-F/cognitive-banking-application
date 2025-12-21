@@ -3,15 +3,50 @@ kind: ConfigMap
 metadata:
   name: cognitive-backend-config
   namespace: cognitive-bank
+  labels:
+    app: cognitive-banking-backend
 data:
+  # Active Spring profile
   SPRING_PROFILES_ACTIVE: kubernetes
+
+  # Server configuration
   SERVER_PORT: "8080"
 
-  # Correct Postgres host
-  DB_HOST: cognitive-postgres-bank.cognitive-bank.svc.cluster.local
-  DB_PORT: "5432"
-  DB_NAME: cognitive_bank
+  # Database - PostgreSQL (highest priority - full JDBC URL)
+  SPRING_DATASOURCE_URL: jdbc:postgresql://cognitive-postgres-bank:5432/cognitive_bank
+  SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
+  SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: "10"
+  SPRING_DATASOURCE_HIKARI_MINIMUM_IDLE: "2"
 
-  # Correct Redis host
-  REDIS_HOST: cognitive-redis-cache.cognitive-bank.svc.cluster.local
-  REDIS_PORT: "6379"
+  # JPA / Hibernate - Schema management
+  SPRING_JPA_HIBERNATE_DDL_AUTO: update          # Recommended for dev/test (creates/updates tables)
+  # Use "validate" in production once schema is stable + Flyway/Liquibase
+  SPRING_JPA_SHOW_SQL: "false"                   # Set to "true" temporarily for debugging
+  SPRING_JPA_PROPERTIES_HIBERNATE_FORMAT_SQL: "true"
+  SPRING_JPA_PROPERTIES_HIBERNATE_USE_SQL_COMMENTS: "true"
+
+  # Redis configuration (standard properties)
+  SPRING_REDIS_HOST: cognitive-redis-cache
+  SPRING_REDIS_PORT: "6379"
+  SPRING_REDIS_TIMEOUT: "2000ms"
+  SPRING_REDIS_LETTUCE_POOL_MAX_ACTIVE: "8"
+  SPRING_REDIS_LETTUCE_POOL_MAX_IDLE: "8"
+  SPRING_REDIS_LETTUCE_POOL_MIN_IDLE: "0"
+
+  # Optional: Full Redis URL override (use if you ever see fallback to localhost/redis)
+  # SPRING_REDIS_URL: redis://cognitive-redis-cache:6379
+
+  # Actuator & Management
+  MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health,info,metrics,prometheus
+  MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS: always
+  MANAGEMENT_ENDPOINT_HEALTH_PROBES_ENABLED: "true"
+
+  # Logging (adjust as needed)
+  LOGGING_LEVEL_ROOT: INFO
+  LOGGING_LEVEL_COM_COGNITIVE_BANKING: DEBUG   # Your package - adjust for more logs
+  LOGGING_LEVEL_ORG_SPRINGFRAMEWORK: INFO
+  LOGGING_LEVEL_ORG_HIBERNATE_SQL: DEBUG       # Uncomment temporarily to see SQL
+
+  # Application-specific (add your own if needed)
+  # APP_BANK_NAME: Cognitive Bank
+  # APP_VERSION: 1.0.0
