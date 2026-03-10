@@ -1,6 +1,6 @@
 # Cognitive Banking Application – Comprehensive Overview & Engineering Insights
 
-This document provides a complete, ready‑to‑use summary of the Cognitive Banking Application, its technology stack, the engineering disciplines it exemplifies, and the transferable skills it demonstrates. You can copy and paste sections into your resume, portfolio, or interview notes.
+This document provides a complete, ready‑to‑use summary of the Cognitive Banking Application, its technology stack, the engineering disciplines it exemplifies, and the transferable skills it demonstrates.
 
 ---
 
