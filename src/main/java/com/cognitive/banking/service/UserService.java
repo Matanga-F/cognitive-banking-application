@@ -39,6 +39,9 @@ public class UserService {
     private static final String USER_CACHE = "users";
     private static final long CACHE_TTL = 30; // minutes
 
+    // ============================
+    // CREATE USER
+    // ============================
     @Caching(evict = {
             @CacheEvict(value = "users", allEntries = true),
             @CacheEvict(value = "users", key = "'email:' + #request.email")
@@ -46,7 +49,6 @@ public class UserService {
     public UserDTO createUser(CreateUserRequest request) {
         logger.info("Creating new user with email: {}", request.getEmail());
 
-        // Validate unique constraints
         if (userRepository.existsByEmail(request.getEmail())) {
             logger.warn("User creation failed - email already exists: {}", request.getEmail());
             throw new RuntimeException("User with email " + request.getEmail() + " already exists");
@@ -57,16 +59,14 @@ public class UserService {
             throw new RuntimeException("User with phone number " + request.getPhoneNumber() + " already exists");
         }
 
-        // Create user entity
         User user = new User();
         user.setFirstName(request.getFirstName());
         user.setLastName(request.getLastName());
         user.setEmail(request.getEmail());
         user.setPhoneNumber(request.getPhoneNumber());
 
-        // Encrypt password
-        String encryptedPassword = passwordEncoder.encode(request.getPassword());
-        user.setPassword(encryptedPassword);
+        // 🔐 HASH PASSWORD
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
 
         user.setStatus(request.getStatus());
         user.setRole(request.getRole());
@@ -74,30 +74,58 @@ public class UserService {
         User savedUser = userRepository.save(user);
         logger.info("User created successfully with ID: {}", savedUser.getUserId());
 
-        // Cache the new user
-        cacheService.put(USER_CACHE, savedUser.getUserId().toString(), convertToDTO(savedUser), CACHE_TTL);
-        cacheService.put(USER_CACHE, "email:" + savedUser.getEmail(), convertToDTO(savedUser), CACHE_TTL);
+        UserDTO dto = convertToDTO(savedUser);
 
-        return convertToDTO(savedUser);
+        cacheService.put(USER_CACHE, savedUser.getUserId().toString(), dto, CACHE_TTL);
+        cacheService.put(USER_CACHE, "email:" + savedUser.getEmail(), dto, CACHE_TTL);
+
+        return dto;
     }
 
+    // ============================
+    // AUTHENTICATION (NEW CORE)
+    // ============================
+    @Transactional(readOnly = true)
+    public UserDTO authenticate(String email, String password) {
+        logger.info("Authenticating user with email: {}", email);
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> {
+                    logger.warn("Authentication failed - user not found: {}", email);
+                    return new RuntimeException("Invalid credentials");
+                });
+
+        if (!passwordEncoder.matches(password, user.getPassword())) {
+            logger.warn("Authentication failed - invalid password for email: {}", email);
+            throw new RuntimeException("Invalid credentials");
+        }
+
+        logger.info("Authentication successful for user ID: {}", user.getUserId());
+
+        // update last login
+        user.setLastLoginAt(LocalDateTime.now());
+        userRepository.save(user);
+
+        return convertToDTO(user);
+    }
+
+    // ============================
+    // GET USER BY ID
+    // ============================
     @Cacheable(value = "users", key = "#userId", unless = "#result == null")
     @Transactional(readOnly = true)
     public Optional<UserDTO> getUserById(UUID userId) {
-        logger.debug("Fetching user by ID from database: {}", userId);
+        logger.debug("Fetching user by ID: {}", userId);
 
-        // First check cache manually for better control
-        UserDTO cachedUser = (UserDTO) cacheService.get(USER_CACHE, userId.toString());
-        if (cachedUser != null) {
-            logger.debug("User cache hit for ID: {}", userId);
-            return Optional.of(cachedUser);
+        UserDTO cached = (UserDTO) cacheService.get(USER_CACHE, userId.toString());
+        if (cached != null) {
+            logger.debug("Cache hit for user ID: {}", userId);
+            return Optional.of(cached);
         }
 
-        logger.info("User cache miss for ID: {}, fetching from database", userId);
         Optional<UserDTO> userDTO = userRepository.findById(userId)
                 .map(this::convertToDTO);
 
-        // Cache the result
         userDTO.ifPresent(dto ->
                 cacheService.put(USER_CACHE, userId.toString(), dto, CACHE_TTL)
         );
@@ -105,23 +133,21 @@ public class UserService {
         return userDTO;
     }
 
+    // ============================
+    // GET USER BY EMAIL
+    // ============================
     @Cacheable(value = "users", key = "'email:' + #email", unless = "#result == null")
     @Transactional(readOnly = true)
     public Optional<UserDTO> getUserByEmail(String email) {
-        logger.debug("Fetching user by email from database: {}", email);
 
-        // First check cache manually
-        UserDTO cachedUser = (UserDTO) cacheService.get(USER_CACHE, "email:" + email);
-        if (cachedUser != null) {
-            logger.debug("User cache hit for email: {}", email);
-            return Optional.of(cachedUser);
+        UserDTO cached = (UserDTO) cacheService.get(USER_CACHE, "email:" + email);
+        if (cached != null) {
+            return Optional.of(cached);
         }
 
-        logger.info("User cache miss for email: {}, fetching from database", email);
         Optional<UserDTO> userDTO = userRepository.findByEmail(email)
                 .map(this::convertToDTO);
 
-        // Cache the result
         userDTO.ifPresent(dto ->
                 cacheService.put(USER_CACHE, "email:" + email, dto, CACHE_TTL)
         );
@@ -129,172 +155,85 @@ public class UserService {
         return userDTO;
     }
 
+    // ============================
+    // GET ALL USERS
+    // ============================
     @Transactional(readOnly = true)
     public List<UserDTO> getAllUsers() {
-        logger.info("Fetching all users from database");
+        logger.info("Fetching all users");
 
-        // For lists, we don't cache the entire list but individual users
-        List<UserDTO> users = userRepository.findAll().stream()
+        return userRepository.findAll()
+                .stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
-
-        // Cache each user individually
-        users.forEach(user ->
-                cacheService.put(USER_CACHE, user.getUserId().toString(), user, CACHE_TTL)
-        );
-
-        return users;
     }
 
+    // ============================
+    // UPDATE USER
+    // ============================
     @Caching(evict = {
             @CacheEvict(value = "users", key = "#userId"),
             @CacheEvict(value = "users", key = "'email:' + #result.email", condition = "#result != null")
     })
     public UserDTO updateUser(UUID userId, UpdateUserRequest request) {
-        logger.info("Updating user with ID: {}", userId);
 
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> {
-                    logger.error("User not found with ID: {}", userId);
-                    return new RuntimeException("User not found with ID: " + userId);
-                });
+                .orElseThrow(() -> new RuntimeException("User not found"));
 
-        String oldEmail = user.getEmail();
-        boolean emailChanged = false;
+        if (request.getFirstName() != null) user.setFirstName(request.getFirstName());
+        if (request.getLastName() != null) user.setLastName(request.getLastName());
 
-        // Update fields if provided
-        if (request.getFirstName() != null) {
-            user.setFirstName(request.getFirstName());
-        }
-        if (request.getLastName() != null) {
-            user.setLastName(request.getLastName());
-        }
         if (request.getEmail() != null && !request.getEmail().equals(user.getEmail())) {
             if (userRepository.existsByEmail(request.getEmail())) {
-                logger.warn("Email update failed - email already exists: {}", request.getEmail());
-                throw new RuntimeException("Email already exists: " + request.getEmail());
+                throw new RuntimeException("Email already exists");
             }
             user.setEmail(request.getEmail());
-            emailChanged = true;
         }
-        if (request.getPhoneNumber() != null && !request.getPhoneNumber().equals(user.getPhoneNumber())) {
-            if (userRepository.existsByPhoneNumber(request.getPhoneNumber())) {
-                logger.warn("Phone number update failed - already exists: {}", request.getPhoneNumber());
-                throw new RuntimeException("Phone number already exists: " + request.getPhoneNumber());
-            }
+
+        if (request.getPhoneNumber() != null) {
             user.setPhoneNumber(request.getPhoneNumber());
         }
 
-        User updatedUser = userRepository.save(user);
-        logger.info("User updated successfully: {}", userId);
+        User updated = userRepository.save(user);
 
-        // Update cache
-        cacheService.put(USER_CACHE, userId.toString(), convertToDTO(updatedUser), CACHE_TTL);
-        cacheService.put(USER_CACHE, "email:" + updatedUser.getEmail(), convertToDTO(updatedUser), CACHE_TTL);
+        UserDTO dto = convertToDTO(updated);
 
-        // Remove old email from cache if email changed
-        if (emailChanged && !oldEmail.equals(updatedUser.getEmail())) {
-            cacheService.evict(USER_CACHE, "email:" + oldEmail);
-        }
+        cacheService.put(USER_CACHE, userId.toString(), dto, CACHE_TTL);
+        cacheService.put(USER_CACHE, "email:" + dto.getEmail(), dto, CACHE_TTL);
 
-        return convertToDTO(updatedUser);
+        return dto;
     }
 
-    @CacheEvict(value = "users", key = "#userId")
+    // ============================
+    // UPDATE STATUS
+    // ============================
     public UserDTO updateUserStatus(UUID userId, String status) {
-        logger.info("Updating user status to {} for user ID: {}", status, userId);
 
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> {
-                    logger.error("User not found with ID: {}", userId);
-                    return new RuntimeException("User not found with ID: " + userId);
-                });
+                .orElseThrow(() -> new RuntimeException("User not found"));
 
         user.setStatus(status);
-        User updatedUser = userRepository.save(user);
+        User updated = userRepository.save(user);
 
-        logger.info("User status updated successfully: {}", userId);
-
-        // Update cache
-        cacheService.put(USER_CACHE, userId.toString(), convertToDTO(updatedUser), CACHE_TTL);
-        cacheService.put(USER_CACHE, "email:" + updatedUser.getEmail(), convertToDTO(updatedUser), CACHE_TTL);
-
-        return convertToDTO(updatedUser);
+        return convertToDTO(updated);
     }
 
-    @Caching(evict = {
-            @CacheEvict(value = "users", key = "#userId"),
-            @CacheEvict(value = "users", key = "'email:' + #result", condition = "#result != null")
-    })
+    // ============================
+    // DELETE USER
+    // ============================
     public void deleteUser(UUID userId) {
-        logger.info("Deleting user with ID: {}", userId);
-
-        // Get user email before deletion for cache cleanup
-        String userEmail = userRepository.findById(userId)
-                .map(User::getEmail)
-                .orElse(null);
 
         if (!userRepository.existsById(userId)) {
-            logger.error("User not found with ID: {}", userId);
-            throw new RuntimeException("User not found with ID: " + userId);
+            throw new RuntimeException("User not found");
         }
 
         userRepository.deleteById(userId);
-
-        // Remove from cache
         cacheService.evict(USER_CACHE, userId.toString());
-        if (userEmail != null) {
-            cacheService.evict(USER_CACHE, "email:" + userEmail);
-        }
-
-        logger.info("User deleted successfully: {}", userId);
     }
 
-    @CacheEvict(value = "users", key = "#userId")
-    public void updateLastLogin(UUID userId) {
-        logger.debug("Updating last login for user ID: {}", userId);
-
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> {
-                    logger.error("User not found with ID: {}", userId);
-                    return new RuntimeException("User not found with ID: " + userId);
-                });
-
-        user.setLastLoginAt(LocalDateTime.now());
-        userRepository.save(user);
-
-        // Update cache with new last login time
-        getUserById(userId).ifPresent(dto ->
-                cacheService.put(USER_CACHE, userId.toString(), dto, CACHE_TTL)
-        );
-    }
-
-    @Transactional(readOnly = true)
-    public long getActiveUsersCount() {
-        logger.debug("Fetching active users count");
-        return userRepository.countByStatus("ACTIVE");
-    }
-
-    // Additional method to clear all user caches (useful for admin operations)
-    public void clearUserCaches() {
-        logger.info("Clearing all user caches");
-        cacheService.evictPattern(USER_CACHE, "*");
-    }
-
-    // Additional method to validate user credentials
-    @Transactional(readOnly = true)
-    public Optional<UserDTO> validateUserCredentials(String email, String password) {
-        logger.debug("Validating user credentials for email: {}", email);
-
-        return userRepository.findByEmail(email)
-                .map(user -> {
-                    if (passwordEncoder.matches(password, user.getPassword())) {
-                        return convertToDTO(user);
-                    }
-                    return null;
-                });
-    }
-
+    // ============================
+    // CONVERTER
+    // ============================
     private UserDTO convertToDTO(User user) {
         return new UserDTO(
                 user.getUserId(),
@@ -308,4 +247,9 @@ public class UserService {
                 user.getLastLoginAt()
         );
     }
+    public long getActiveUsersCount() {
+	        return userRepository.countByStatus("ACTIVE");
+    }
 }
+
+

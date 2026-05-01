@@ -53,6 +53,14 @@ management:
     diskspace:
       enabled: true
 
+
+# =========================================================
+# JWT CONFIGURATION
+# =========================================================
+jwt:
+  secret: ${JWT_SECRET:8iX+TfNHmbGXNxJ7MYlKY0QhTDB5F7DNCh0SPoI9hR0=}
+  access-expiration: ${JWT_ACCESS_EXPIRATION:900000}   # 15 minutes
+
 # =========================================================
 # DEV PROFILE — H2 (IN-MEMORY, AUTO CREATE TABLES)
 # =========================================================

@@ -5,8 +5,8 @@ import com.cognitive.banking.dto.UpdateUserRequest;
 import com.cognitive.banking.dto.UserDTO;
 import com.cognitive.banking.service.UserService;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -17,130 +17,137 @@ import java.util.UUID;
 @RequestMapping("/users")
 public class UserController {
 
-    @Autowired
-    private UserService userService;
+    private static final Logger logger = LoggerFactory.getLogger(UserController.class);
 
-    /**
-     * Create a new user
-     */
+    private final UserService userService;
+
+    public UserController(UserService userService) {
+        this.userService = userService;
+    }
+
+    // ============================
+    // CREATE USER
+    // ============================
     @PostMapping
     public ResponseEntity<UserDTO> createUser(@Valid @RequestBody CreateUserRequest request) {
-        try {
-            UserDTO user = userService.createUser(request);
-            return new ResponseEntity<>(user, HttpStatus.CREATED);
-        } catch (RuntimeException e) {
-            return new ResponseEntity<>(null, HttpStatus.BAD_REQUEST);
-        }
+
+        logger.info("API Request: Create user with email={}", request.getEmail());
+
+        UserDTO user = userService.createUser(request);
+
+        return ResponseEntity
+                .status(201)
+                .body(user);
     }
 
-    /**
-     * Get user by ID
-     */
+    // ============================
+    // GET USER BY ID
+    // ============================
     @GetMapping("/{userId}")
     public ResponseEntity<UserDTO> getUserById(@PathVariable UUID userId) {
-        try {
-            return userService.getUserById(userId)
-                    .map(ResponseEntity::ok)
-                    .orElse(ResponseEntity.notFound().build());
-        } catch (Exception e) {
-            return new ResponseEntity<>(null, HttpStatus.INTERNAL_SERVER_ERROR);
-        }
+
+        logger.debug("API Request: Get user by ID={}", userId);
+
+        return userService.getUserById(userId)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> {
+                    logger.warn("User not found: {}", userId);
+                    return ResponseEntity.notFound().build();
+                });
     }
 
-    /**
-     * Get user by email
-     */
+    // ============================
+    // GET USER BY EMAIL
+    // ============================
     @GetMapping("/email/{email}")
     public ResponseEntity<UserDTO> getUserByEmail(@PathVariable String email) {
-        try {
-            return userService.getUserByEmail(email)
-                    .map(ResponseEntity::ok)
-                    .orElse(ResponseEntity.notFound().build());
-        } catch (Exception e) {
-            return new ResponseEntity<>(null, HttpStatus.INTERNAL_SERVER_ERROR);
-        }
+
+        logger.debug("API Request: Get user by email={}", email);
+
+        return userService.getUserByEmail(email)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> {
+                    logger.warn("User not found: {}", email);
+                    return ResponseEntity.notFound().build();
+                });
     }
 
-    /**
-     * Get all users
-     */
+    // ============================
+    // GET ALL USERS
+    // ============================
     @GetMapping
     public ResponseEntity<List<UserDTO>> getAllUsers() {
-        try {
-            List<UserDTO> users = userService.getAllUsers();
-            return ResponseEntity.ok(users);
-        } catch (Exception e) {
-            return new ResponseEntity<>(null, HttpStatus.INTERNAL_SERVER_ERROR);
-        }
+
+        logger.info("API Request: Get all users");
+
+        List<UserDTO> users = userService.getAllUsers();
+
+        return ResponseEntity.ok(users);
     }
 
-    /**
-     * Update user details
-     */
+    // ============================
+    // UPDATE USER
+    // ============================
     @PutMapping("/{userId}")
     public ResponseEntity<UserDTO> updateUser(
             @PathVariable UUID userId,
             @Valid @RequestBody UpdateUserRequest request) {
-        try {
-            UserDTO updatedUser = userService.updateUser(userId, request);
-            return ResponseEntity.ok(updatedUser);
-        } catch (RuntimeException e) {
-            return new ResponseEntity<>(null, HttpStatus.BAD_REQUEST);
-        } catch (Exception e) {
-            return new ResponseEntity<>(null, HttpStatus.INTERNAL_SERVER_ERROR);
-        }
+
+        logger.info("API Request: Update user {}", userId);
+
+        UserDTO updatedUser = userService.updateUser(userId, request);
+
+        return ResponseEntity.ok(updatedUser);
     }
 
-    /**
-     * Update user status
-     */
+    // ============================
+    // UPDATE USER STATUS
+    // ============================
     @PatchMapping("/{userId}/status")
     public ResponseEntity<UserDTO> updateUserStatus(
             @PathVariable UUID userId,
             @RequestParam String status) {
-        try {
-            UserDTO updatedUser = userService.updateUserStatus(userId, status);
-            return ResponseEntity.ok(updatedUser);
-        } catch (RuntimeException e) {
-            return new ResponseEntity<>(null, HttpStatus.BAD_REQUEST);
-        } catch (Exception e) {
-            return new ResponseEntity<>(null, HttpStatus.INTERNAL_SERVER_ERROR);
-        }
+
+        logger.info("API Request: Update status {} for user {}", status, userId);
+
+        UserDTO updatedUser = userService.updateUserStatus(userId, status);
+
+        return ResponseEntity.ok(updatedUser);
     }
 
-    /**
-     * Delete user
-     */
+    // ============================
+    // DELETE USER
+    // ============================
     @DeleteMapping("/{userId}")
     public ResponseEntity<Void> deleteUser(@PathVariable UUID userId) {
-        try {
-            userService.deleteUser(userId);
-            return ResponseEntity.noContent().build();
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        } catch (Exception e) {
-            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
-        }
+
+        logger.warn("API Request: Delete user {}", userId);
+
+        userService.deleteUser(userId);
+
+        return ResponseEntity.noContent().build();
     }
 
-    /**
-     * Get count of active users
-     */
+    // ============================
+    // ACTIVE USERS COUNT
+    // ============================
     @GetMapping("/count/active")
     public ResponseEntity<Long> getActiveUsersCount() {
-        try {
-            long count = userService.getActiveUsersCount();
-            return ResponseEntity.ok(count);
-        } catch (Exception e) {
-            return new ResponseEntity<>(0L, HttpStatus.INTERNAL_SERVER_ERROR);
-        }
+
+        logger.debug("API Request: Active users count");
+
+        long count = userService.getActiveUsersCount();
+
+        return ResponseEntity.ok(count);
     }
 
-    /**
-     * Health check endpoint
-     */
+    // ============================
+    // HEALTH CHECK
+    // ============================
     @GetMapping("/health")
     public ResponseEntity<String> health() {
-        return ResponseEntity.ok("User Service is running");
+        return ResponseEntity.ok("User Service is healthy");
     }
 }
+
+
