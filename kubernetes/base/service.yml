@@ -8,9 +8,8 @@ metadata:
 spec:
   selector:
     app: cognitive-banking-backend
-  type: NodePort
   ports:
-    - port: 80
+    - name: http
+      port: 80
       targetPort: 8080
-      nodePort: 32087
-      name: http
+  type: ClusterIP

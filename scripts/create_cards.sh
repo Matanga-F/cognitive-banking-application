@@ -1,43 +1,49 @@
 #!/bin/bash
 
 BASE_URL="http://localhost:8080/api/cognitive/bank/cards"
-
 ACCOUNTS_FILE="accounts_created.json"
-USERS_FILE="users_created.json"
 OUTPUT_FILE="cards_created.json"
 
 CARD_TYPES=("DEBIT" "CREDIT")
 DAILY_LIMIT=3000.00
-CREDIT_LIMIT=0.00
+CREDIT_LIMIT=5000.00
 
-# Checks
-[ ! -f "$ACCOUNTS_FILE" ] && echo "❌ accounts_created.json not found" && exit 1
-[ ! -f "$USERS_FILE" ] && echo "❌ users_created.json not found" && exit 1
+# Check files exist
+[ ! -f "$ACCOUNTS_FILE" ] && echo "❌ $ACCOUNTS_FILE not found" && exit 1
 
 echo "[" > "$OUTPUT_FILE"
-FIRST=true
+COUNT=0
+LINE_NUM=0
 
-# Flatten accounts JSON
-ACCOUNTS=$(cat "$ACCOUNTS_FILE" | tr -d '\n' | sed 's/},{/}\n{/g' | sed 's/^\[\|\]$//g')
+# Read accounts file line by line
+while IFS= read -r line; do
+  LINE_NUM=$((LINE_NUM + 1))
 
-for acc in $ACCOUNTS; do
+  # Skip empty lines and brackets
+  [[ "$line" =~ ^[[:space:]]*[\[\],][[:space:]]*$ ]] && continue
 
-  USER_ID=$(echo "$acc" | sed -n 's/.*"userId":"\([^"]\+\)".*/\1/p')
-  ACCOUNT_ID=$(echo "$acc" | sed -n 's/.*"accountId":"\([^"]\+\)".*/\1/p')
+  # Extract data from the line
+  USER_ID=$(echo "$line" | sed -n 's/.*"userId":"\([^"]*\)".*/\1/p')
+  ACCOUNT_ID=$(echo "$line" | sed -n 's/.*"accountId":"\([^"]*\)".*/\1/p')
+  FULL_NAME=$(echo "$line" | sed -n 's/.*"fullName":"\([^"]*\)".*/\1/p')
 
-  [ -z "$USER_ID" ] && continue
-  [ -z "$ACCOUNT_ID" ] && continue
+  # Clean any trailing commas
+  USER_ID=${USER_ID%,}
+  ACCOUNT_ID=${ACCOUNT_ID%,}
+  FULL_NAME=${FULL_NAME%,}
 
-  # Find full name from users file
-  USER_LINE=$(grep "\"userId\":\"$USER_ID\"" "$USERS_FILE")
-  FULL_NAME=$(echo "$USER_LINE" | sed -n 's/.*"fullName":"\([^"]\+\)".*/\1/p')
+  # Skip if any field is missing or invalid
+  if [ -z "$USER_ID" ] || [ -z "$ACCOUNT_ID" ] || [ -z "$FULL_NAME" ] || \
+     [[ "$ACCOUNT_ID" == failed* ]] || [[ "$ACCOUNT_ID" == error* ]]; then
+    continue
+  fi
 
-  [ -z "$FULL_NAME" ] && continue
-
+  # Random card type
   CARD_TYPE=${CARD_TYPES[$RANDOM % ${#CARD_TYPES[@]}]}
 
   echo "Creating $CARD_TYPE card for $FULL_NAME"
 
+  # Make API call
   RESPONSE=$(curl -s -X POST "$BASE_URL" \
     -H "Content-Type: application/json" \
     -d "{
@@ -49,27 +55,38 @@ for acc in $ACCOUNTS; do
       \"dailyLimit\": $DAILY_LIMIT
     }")
 
-  CARD_ID=$(echo "$RESPONSE" | sed -n 's/.*"cardId":"\([^"]\+\)".*/\1/p')
+  # Extract card ID - try multiple patterns
+  CARD_ID=$(echo "$RESPONSE" | grep -o '"cardId":"[^"]*"' | cut -d'"' -f4)
 
   if [ -z "$CARD_ID" ]; then
-    echo "❌ Card creation failed for $FULL_NAME"
-    echo "Response: $RESPONSE"
-    continue
+    CARD_ID=$(echo "$RESPONSE" | grep -o '"id":"[^"]*"' | cut -d'"' -f4)
   fi
 
-  echo "✔ Card created: $CARD_ID"
-
-  if [ "$FIRST" = true ]; then
-    FIRST=false
+  if [ -z "$CARD_ID" ]; then
+    # If curl failed or no response
+    if [[ -z "$RESPONSE" ]] || [[ "$RESPONSE" == *"curl:"* ]]; then
+      echo "❌ Connection failed for $FULL_NAME"
+      CARD_ID="failed-card-$((RANDOM % 1000))"
+    else
+      echo "❌ Card creation failed"
+      CARD_ID="error-$LINE_NUM"
+    fi
   else
+    echo "✔ Card created: $CARD_ID"
+  fi
+
+  # Write to output file
+  if [ $COUNT -gt 0 ]; then
     echo "," >> "$OUTPUT_FILE"
   fi
 
-  echo "  {\"fullName\":\"$FULL_NAME\",\"userId\":\"$USER_ID\",\"accountId\":\"$ACCOUNT_ID\",\"cardId\":\"$CARD_ID\"}" >> "$OUTPUT_FILE"
+  echo "  {\"fullName\":\"$FULL_NAME\",\"userId\":\"$USER_ID\",\"accountId\":\"$ACCOUNT_ID\",\"cardId\":\"$CARD_ID\",\"cardType\":\"$CARD_TYPE\"}" >> "$OUTPUT_FILE"
+  COUNT=$((COUNT + 1))
 
   sleep 0.2
-done
+
+done < "$ACCOUNTS_FILE"
 
 echo "]" >> "$OUTPUT_FILE"
 
-echo "✅ Cards written to $OUTPUT_FILE"
+echo "✅ Created $COUNT cards in $OUTPUT_FILE"

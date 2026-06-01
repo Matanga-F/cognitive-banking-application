@@ -8,6 +8,7 @@ import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -18,7 +19,6 @@ import java.util.UUID;
 public class UserController {
 
     private static final Logger logger = LoggerFactory.getLogger(UserController.class);
-
     private final UserService userService;
 
     public UserController(UserService userService) {
@@ -26,28 +26,23 @@ public class UserController {
     }
 
     // ============================
-    // CREATE USER
+    // CREATE USER (Admin only)
     // ============================
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<UserDTO> createUser(@Valid @RequestBody CreateUserRequest request) {
-
         logger.info("API Request: Create user with email={}", request.getEmail());
-
         UserDTO user = userService.createUser(request);
-
-        return ResponseEntity
-                .status(201)
-                .body(user);
+        return ResponseEntity.status(201).body(user);
     }
 
     // ============================
-    // GET USER BY ID
+    // GET USER BY ID (User can read self, Admin can read any)
     // ============================
     @GetMapping("/{userId}")
+    @PreAuthorize("hasRole('ADMIN') or #userId == authentication.principal.id")
     public ResponseEntity<UserDTO> getUserById(@PathVariable UUID userId) {
-
         logger.debug("API Request: Get user by ID={}", userId);
-
         return userService.getUserById(userId)
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> {
@@ -57,13 +52,12 @@ public class UserController {
     }
 
     // ============================
-    // GET USER BY EMAIL
+    // GET USER BY EMAIL (Admin only – prevents email enumeration)
     // ============================
     @GetMapping("/email/{email}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<UserDTO> getUserByEmail(@PathVariable String email) {
-
         logger.debug("API Request: Get user by email={}", email);
-
         return userService.getUserByEmail(email)
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> {
@@ -73,81 +67,67 @@ public class UserController {
     }
 
     // ============================
-    // GET ALL USERS
+    // GET ALL USERS (Admin only)
     // ============================
     @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<UserDTO>> getAllUsers() {
-
         logger.info("API Request: Get all users");
-
-        List<UserDTO> users = userService.getAllUsers();
-
-        return ResponseEntity.ok(users);
+        return ResponseEntity.ok(userService.getAllUsers());
     }
 
     // ============================
-    // UPDATE USER
+    // UPDATE USER (User can update self, Admin can update any)
     // ============================
     @PutMapping("/{userId}")
+    @PreAuthorize("hasRole('ADMIN') or #userId == authentication.principal.id")
     public ResponseEntity<UserDTO> updateUser(
             @PathVariable UUID userId,
             @Valid @RequestBody UpdateUserRequest request) {
-
         logger.info("API Request: Update user {}", userId);
-
         UserDTO updatedUser = userService.updateUser(userId, request);
-
         return ResponseEntity.ok(updatedUser);
     }
 
     // ============================
-    // UPDATE USER STATUS
+    // UPDATE USER STATUS (Admin only – can lock/activate)
     // ============================
     @PatchMapping("/{userId}/status")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<UserDTO> updateUserStatus(
             @PathVariable UUID userId,
             @RequestParam String status) {
-
         logger.info("API Request: Update status {} for user {}", status, userId);
-
         UserDTO updatedUser = userService.updateUserStatus(userId, status);
-
         return ResponseEntity.ok(updatedUser);
     }
 
     // ============================
-    // DELETE USER
+    // SOFT DELETE USER (Admin only)
     // ============================
     @DeleteMapping("/{userId}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> deleteUser(@PathVariable UUID userId) {
-
-        logger.warn("API Request: Delete user {}", userId);
-
-        userService.deleteUser(userId);
-
+        logger.warn("API Request: Soft delete user {}", userId);
+        userService.softDeleteUser(userId);   // ✅ Changed from deleteUser to softDeleteUser
         return ResponseEntity.noContent().build();
     }
 
     // ============================
-    // ACTIVE USERS COUNT
+    // ACTIVE USERS COUNT (Admin only – internal metric)
     // ============================
     @GetMapping("/count/active")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Long> getActiveUsersCount() {
-
         logger.debug("API Request: Active users count");
-
-        long count = userService.getActiveUsersCount();
-
-        return ResponseEntity.ok(count);
+        return ResponseEntity.ok(userService.getActiveUsersCount());
     }
 
     // ============================
-    // HEALTH CHECK
+    // HEALTH CHECK (public)
     // ============================
     @GetMapping("/health")
     public ResponseEntity<String> health() {
         return ResponseEntity.ok("User Service is healthy");
     }
 }
-
-

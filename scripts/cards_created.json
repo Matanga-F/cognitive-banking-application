@@ -1,25 +1,41 @@
 [
-  {"fullName":"Emma Diallo","userId":"bdef6981-fad1-47e0-87f2-27e1bbaf1d39","accountId":"a2e08da8-ae2e-4bb7-9f09-adca40ec8b6f","cardId":"8ebcf0ba-28f4-43b4-a696-523cc43fe67f"}
+  {"fullName":"Kwame Nkosi","userId":"6f96a892-b9c9-4a9b-b3f3-9299f7ed0c2c","accountId":"acc-17663297976","cardId":"failed-card-405","cardType":"DEBIT"}
 ,
-  {"fullName":"Kwame Williams","userId":"04b109e9-52b7-496c-859c-ac1be92eaa27","accountId":"f05e06fd-50a9-434d-9b1a-f5b022758fed","cardId":"bd4e53ab-dffe-442b-8479-091ba3fa68b1"}
+  {"fullName":"Nia Okoro","userId":"5e602419-ea1e-4b31-bbd5-f4a0ab6d4dee","accountId":"acc-1766329797483","cardId":"failed-card-733","cardType":"CREDIT"}
 ,
-  {"fullName":"Lucas Williams","userId":"a062e2d7-6d31-41bd-8220-86c11ce92f67","accountId":"617cfaee-2bb5-4941-baf5-fa08a3d7c560","cardId":"e8a540fe-4069-4607-b3e7-de12db0a2447"}
+  {"fullName":"Chidi Diallo","userId":"f27bd7a1-5e0c-469e-862f-501a75da5121","accountId":"acc-1766329798150","cardId":"failed-card-857","cardType":"DEBIT"}
 ,
-  {"fullName":"Sophia Smith","userId":"79e7292c-12ab-455b-8c31-34cff5045ab2","accountId":"f5850855-4a07-4e40-b0d5-90ebfa57add6","cardId":"e9969f11-83c2-4634-9b59-b93a1f91d94f"}
+  {"fullName":"Amina Smith","userId":"27fb1f5a-af3a-41c6-88bc-5230c4058e99","accountId":"acc-1766329798665","cardId":"failed-card-487","cardType":"CREDIT"}
 ,
-  {"fullName":"Kofi Diallo","userId":"d081893e-96fd-4149-ba0c-e15dc9a0f345","accountId":"c827e79b-05df-45c4-b916-beb24eda88c3","cardId":"076da6df-f821-42dd-9e15-dd5dd935e5d8"}
+  {"fullName":"Tendai Johnson","userId":"843b7796-a25b-4de8-99a3-2166df18fc0f","accountId":"acc-1766329798985","cardId":"failed-card-202","cardType":"DEBIT"}
 ,
-  {"fullName":"Sophia Brown","userId":"d3ebaa12-5b5e-4a6b-9775-6793790376a0","accountId":"25551ca1-2609-49ef-845e-540e6449757f","cardId":"144add23-85f6-4525-b4cc-08f3b4e19340"}
+  {"fullName":"Zola Brown","userId":"bbd23112-2ab6-443a-b59c-6278e5a59b46","accountId":"acc-1766329799727","cardId":"failed-card-811","cardType":"DEBIT"}
 ,
-  {"fullName":"Kofi Nkosi","userId":"ce93f205-375f-465a-8984-7d097a1d4db0","accountId":"79d24a74-67f3-40a5-942a-6a1e48879c1f","cardId":"11701505-da9a-4961-ad30-651392a92a2f"}
+  {"fullName":"Kofi Williams","userId":"bb068b9e-f416-46af-b2cc-31bdbc37ca1a","accountId":"acc-1766329799221","cardId":"failed-card-818","cardType":"DEBIT"}
 ,
-  {"fullName":"Chidi Nkosi","userId":"0e2abcdb-c54c-4dac-9b9c-598f1fe1b760","accountId":"6fa82ef5-4a72-4ce3-8f56-6efb51477d30","cardId":"3f0afc26-63e1-4239-8d95-84c66b88e91e"}
+  {"fullName":"Lerato Jones","userId":"938963be-77b9-406f-85d0-40a2ca065809","accountId":"acc-1766329799691","cardId":"failed-card-166","cardType":"CREDIT"}
 ,
-  {"fullName":"Lerato Nkosi","userId":"4caf3ce7-caf8-4492-aad8-83720708b31b","accountId":"c8bd6c23-78a2-45c0-b9e9-1c68651f4645","cardId":"06c9fe82-55e2-43e2-8948-ff1f40b7466a"}
+  {"fullName":"James Garcia","userId":"44607890-79a3-48dc-9027-3922e702497e","accountId":"acc-176632979974","cardId":"failed-card-278","cardType":"CREDIT"}
 ,
-  {"fullName":"Lerato Diallo","userId":"13411585-6e10-4770-88d0-3ab8fa92f4c6","accountId":"a21e50a9-1a76-46a1-a9e5-4e2fb4dffa7c","cardId":"c4ad766f-2f45-467e-ade0-6be8b8b40628"}
+  {"fullName":"Emma Miller","userId":"30982ff6-6c27-461f-aaf2-57e22b947afa","accountId":"acc-1766329800632","cardId":"failed-card-886","cardType":"DEBIT"}
 ,
-  {"fullName":"Emma Johnson","userId":"9ac93575-adef-435e-9317-9dc456884dcd","accountId":"91776840-f768-4d2c-966e-e22a323177d9","cardId":"df06ba5b-69d9-4d56-b410-8387c3def9bb"}
+  {"fullName":"Lucas Davis","userId":"88e4f372-d4e0-4f42-be08-61daff58dece","accountId":"acc-1766329800955","cardId":"failed-card-865","cardType":"DEBIT"}
 ,
-  {"fullName":"Emma Johnson","userId":"33abb0ec-7933-4438-a708-81307079d91e","accountId":"894cb948-74e6-4a7f-9a4e-3b2764cad537","cardId":"9c5065d2-958d-4753-9edc-fc0ac80eab51"}
+  {"fullName":"Sophia Wilson","userId":"4c39139b-f8fe-479e-8d5b-14a64e1b143a","accountId":"acc-1766329800524","cardId":"failed-card-950","cardType":"CREDIT"}
+,
+  {"fullName":"David Anderson","userId":"1b637028-ffe6-4ab7-8d00-2924b6865ba3","accountId":"acc-1766329800244","cardId":"failed-card-469","cardType":"CREDIT"}
+,
+  {"fullName":"Sarah Thomas","userId":"b234b32e-bdc1-47fe-8c73-5cdfd964ca74","accountId":"acc-1766329801623","cardId":"failed-card-37","cardType":"CREDIT"}
+,
+  {"fullName":"Michael Taylor","userId":"679a4ad6-55ee-43f6-9391-8b35bd61e5d1","accountId":"acc-1766329801718","cardId":"failed-card-321","cardType":"DEBIT"}
+,
+  {"fullName":"Grace Mensah","userId":"95efde8c-1682-4d5d-90cf-315a12016eb3","accountId":"acc-1766329802721","cardId":"failed-card-737","cardType":"CREDIT"}
+,
+  {"fullName":"John Nkosi","userId":"0154d495-8b62-4807-a9c9-d92a4f821ce1","accountId":"acc-1766329802421","cardId":"failed-card-321","cardType":"CREDIT"}
+,
+  {"fullName":"Mary Okoro","userId":"73c76bc0-49ad-4b0f-aef4-bd47a027bbb6","accountId":"acc-176632980374","cardId":"failed-card-707","cardType":"CREDIT"}
+,
+  {"fullName":"Daniel Diallo","userId":"145bcc77-da94-47ba-8393-aa719381c9ea","accountId":"acc-1766329803199","cardId":"failed-card-364","cardType":"CREDIT"}
+,
+  {"fullName":"Ruth Smith","userId":"9defe5b8-c524-4e68-97cc-a9f3bef5ca26","accountId":"acc-1766329803247","cardId":"failed-card-269","cardType":"DEBIT"}
 ]

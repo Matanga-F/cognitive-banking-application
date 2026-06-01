@@ -1,6 +1,7 @@
 package com.cognitive.banking.configuration;
 
 import com.cognitive.banking.service.JwtService;
+import com.cognitive.banking.service.RedisTokenBlacklistService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -22,13 +23,16 @@ import java.io.IOException;
 public class JwtAuthFilter extends OncePerRequestFilter {
 
     private static final Logger log = LoggerFactory.getLogger(JwtAuthFilter.class);
-
     private final JwtService jwtService;
     private final UserDetailsService userDetailsService;
+    private final RedisTokenBlacklistService blacklistService;
 
-    public JwtAuthFilter(JwtService jwtService, UserDetailsService userDetailsService) {
+    public JwtAuthFilter(JwtService jwtService,
+                         UserDetailsService userDetailsService,
+                         RedisTokenBlacklistService blacklistService) {
         this.jwtService = jwtService;
         this.userDetailsService = userDetailsService;
+        this.blacklistService = blacklistService;
     }
 
     @Override
@@ -45,12 +49,28 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         }
 
         final String jwt = authHeader.substring(7);
+
+        // 1. Blacklist check
+        if (blacklistService.isBlacklisted(jwt)) {
+            log.warn("Blocked blacklisted token");
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Token revoked");
+            return;
+        }
+
         try {
             final String username = jwtService.extractUsername(jwt);
 
             if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
                 UserDetails userDetails = userDetailsService.loadUserByUsername(username);
 
+                // 2. Account lock check (re‑evaluated on every request)
+                if (!userDetails.isAccountNonLocked()) {
+                    log.warn("Account locked for user: {}", username);
+                    response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Account locked");
+                    return;
+                }
+
+                // 3. Token validity (signature, expiry, username match)
                 if (jwtService.isTokenValid(jwt, userDetails)) {
                     UsernamePasswordAuthenticationToken authToken =
                             new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
@@ -59,12 +79,14 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                     log.debug("Authenticated user: {} with roles: {}", username, userDetails.getAuthorities());
                 } else {
                     log.warn("Invalid JWT for user: {}", username);
+                    response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid token");
+                    return;
                 }
             }
         } catch (Exception e) {
-            log.error("JWT processing failed: {}", e.getMessage());
-            // Do NOT throw – let the request continue without authentication.
-            // The security chain will return 401 if the endpoint requires auth.
+            log.error("JWT authentication error: {}", e.getMessage());
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Authentication failed");
+            return;
         }
 
         filterChain.doFilter(request, response);

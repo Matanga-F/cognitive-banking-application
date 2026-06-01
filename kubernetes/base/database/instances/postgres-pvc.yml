@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: postgres-backup-pvc
+  name: postgres-data-cognitive-postgres-bank-0
   namespace: cognitive-bank
 spec:
   accessModes:

@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: cognitive-postgres-bank
+  namespace: cognitive-bank
 spec:
   serviceName: cognitive-postgres-bank
   replicas: 1

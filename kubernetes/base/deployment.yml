@@ -3,6 +3,8 @@ kind: Deployment
 metadata:
   name: cognitive-banking-backend
   namespace: cognitive-bank
+  labels:
+    app: cognitive-banking-backend
 spec:
   replicas: 2
   selector:
@@ -20,45 +22,60 @@ spec:
           ports:
             - containerPort: 8080
 
+          # Load non-sensitive config and secrets
           envFrom:
             - configMapRef:
                 name: cognitive-backend-config
             - secretRef:
                 name: cognitive-backend-secrets
 
-          # Add JVM tuning to prevent heap from eating all container memory
+          # Explicit DB credentials mapping
           env:
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: cognitive-backend-secrets
+                  key: DB_USERNAME
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: cognitive-backend-secrets
+                  key: DB_PASSWORD
             - name: JAVA_TOOL_OPTIONS
               value: "-Xms384m -Xmx1024m -XX:+UseG1GC -XX:MaxMetaspaceSize=128m -XX:+ExitOnOutOfMemoryError"
 
+          # Health probes with extended tolerance (15 minutes)
           readinessProbe:
             httpGet:
               path: /api/cognitive/bank/actuator/health/readiness
               port: 8080
-            initialDelaySeconds: 180
-            periodSeconds: 30
-            failureThreshold: 3
+            initialDelaySeconds: 180       # wait 3 minutes before first probe
+            periodSeconds: 30              # check every 30s
+            failureThreshold: 30           # 30 × 30s = 15 minutes max
+            timeoutSeconds: 5
 
           livenessProbe:
             httpGet:
               path: /api/cognitive/bank/actuator/health/liveness
               port: 8080
-            initialDelaySeconds: 180
+            initialDelaySeconds: 180       # wait 3 minutes before first probe
             periodSeconds: 30
-            failureThreshold: 3
+            failureThreshold: 30           # 15 minutes tolerance
+            timeoutSeconds: 5
 
           startupProbe:
             httpGet:
               path: /api/cognitive/bank/actuator/health
               port: 8080
-            initialDelaySeconds: 30
-            periodSeconds: 10
-            failureThreshold: 30   # Increased – gives more time if needed
+            initialDelaySeconds: 120       # wait 2 minutes before first probe
+            periodSeconds: 30              # check every 30s
+            failureThreshold: 30           # 30 × 30s = 15 minutes max
+            timeoutSeconds: 5
 
           resources:
             requests:
-              cpu: "500m"    # Increased a bit for stability
-              memory: "1Gi"  # Give it guaranteed 1Gi
+              cpu: "500m"
+              memory: "1Gi"
             limits:
-              cpu: "1000m"    # 1 full core
-              memory: "2Gi"  # THIS IS THE KEY FIX – double the previous limit
+              cpu: "1000m"
+              memory: "2Gi"

@@ -1,5 +1,7 @@
 package com.cognitive.banking.dto;
 
+import com.cognitive.banking.domain.enums.UserRole;
+import com.cognitive.banking.domain.enums.UserStatus;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -20,7 +22,7 @@ public class UserDTO {
     private LocalDateTime lastLoginAt;
 
     // Constructors
-    public UserDTO() {}
+    public UserDTO(UUID userId, String firstName, String lastName, String email, String phoneNumber, UserStatus status, UserRole role, LocalDateTime createdAt, LocalDateTime lastLoginAt) {}
 
     public UserDTO(UUID userId, String firstName, String lastName, String email,
                    String phoneNumber, String status, String role,
