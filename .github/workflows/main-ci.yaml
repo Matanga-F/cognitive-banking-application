@@ -7,10 +7,9 @@ on:
   pull_request:
 
 jobs:
-  # 1. Build & Test Spring Boot App
+  # 1. Build & Test Spring Boot App (DEV profile)
   test:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -22,8 +21,10 @@ jobs:
           java-version: '21'
           cache: maven
 
-      - name: Build & Run Tests
-        run: mvn clean verify
+      - name: Build & Run Tests (dev profile)
+        run: mvn clean verify -Pdev
+        env:
+          SPRING_PROFILES_ACTIVE: dev
 
       - name: Upload test reports
         if: always()
@@ -32,12 +33,11 @@ jobs:
           name: test-reports
           path: target/surefire-reports
 
-  # 2. Build & Push Docker Image (ONLY if tests pass)
+  # 2. Build & Push Docker Image (STAGING profile)
   docker:
     runs-on: ubuntu-latest
     needs: test
     if: needs.test.result == 'success'
-
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -51,7 +51,7 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build & Push Docker Image
+      - name: Build & Push Docker Image (docker profile)
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -60,3 +60,5 @@ jobs:
           tags: |
             fulufhelom/cognitive-banking-application:latest
             fulufhelom/cognitive-banking-application:${{ github.sha }}
+        env:
+          SPRING_PROFILES_ACTIVE: docker
