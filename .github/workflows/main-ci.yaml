@@ -62,3 +62,6 @@ jobs:
             fulufhelom/cognitive-banking-application:${{ github.sha }}
         env:
           SPRING_PROFILES_ACTIVE: docker
+      - name: Run Docker Compose (staging stack)
+        run: docker-compose -f docker-compose.yml up -d
+
