@@ -7,7 +7,7 @@ on:
   pull_request:
 
 jobs:
-  # 1. Build & Test Spring Boot App (DEV profile)
+  # 1. Build & Unit Test (DEV profile)
   test:
     runs-on: ubuntu-latest
     steps:
@@ -21,23 +21,47 @@ jobs:
           java-version: '21'
           cache: maven
 
-      - name: Build & Run Tests (dev profile)
+      - name: Run Unit Tests (dev profile)
         run: mvn clean verify -Pdev
         env:
           SPRING_PROFILES_ACTIVE: dev
 
-      - name: Upload test reports
+      - name: Upload Test Reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: test-reports
           path: target/surefire-reports
 
-  # 2. Build & Push Docker Image (STAGING profile)
-  docker:
+  # 2. Integration Test with Docker Compose (STAGING profile)
+  integration:
     runs-on: ubuntu-latest
     needs: test
-    if: needs.test.result == 'success'
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker
+        uses: docker/setup-buildx-action@v3
+
+      - name: Run Docker Compose (staging stack)
+        run: docker-compose -f docker-compose.yml up -d
+
+      - name: Wait for App Startup
+        run: sleep 20
+
+      - name: Health Check
+        run: curl -f http://localhost:8080/api/cognitive/bank/actuator/health
+
+      - name: Stop Docker Compose
+        if: always()
+        run: docker-compose -f docker-compose.yml down
+
+  # 3. Build & Push Docker Image (STAGING profile)
+  docker:
+    runs-on: ubuntu-latest
+    needs: integration
+    if: github.event_name == 'push' && needs.integration.result == 'success'
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -51,7 +75,7 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build & Push Docker Image (docker profile)
+      - name: Build & Push Docker Image
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -62,6 +86,26 @@ jobs:
             fulufhelom/cognitive-banking-application:${{ github.sha }}
         env:
           SPRING_PROFILES_ACTIVE: docker
-      - name: Run Docker Compose (staging stack)
-        run: docker-compose -f docker-compose.yml up -d
 
+  # 4. Deploy to Kubernetes (PROD profile) via ArgoCD
+  # Note: ArgoCD handles sync, so this job just updates manifests
+  update-manifests:
+    runs-on: ubuntu-latest
+    needs: docker
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Update Helm Values
+        run: |
+          sed -i "s/tag:.*/tag: ${{ github.sha }}/" helm-chart/values.yaml
+          sed -i "s/repository:.*/repository: fulufhelom\/cognitive-banking-application/" helm-chart/values.yaml
+          sed -i "s/spring.profiles.active:.*/spring.profiles.active: kubernetes/" helm-chart/values.yaml
+
+      - name: Commit & Push Updated Manifests
+        run: |
+          git config user.name "Matanga-F"
+          git config user.email "actions@github.com"
+          git add helm-chart/values.yaml
+          git commit -m "Update image tag to ${{ github.sha }}"
+          git push
