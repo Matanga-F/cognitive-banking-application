@@ -1,15 +1,15 @@
-// src/main/java/com/cognitive/banking/dto/LoanDTO.java
 package com.cognitive.banking.dto;
 
 import com.cognitive.banking.domain.enums.LoanStatus;
 import com.cognitive.banking.domain.enums.LoanType;
-
+import com.fasterxml.jackson.annotation.JsonFormat;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
 public class LoanDTO {
+
     private UUID loanId;
     private String loanNumber;
     private LoanType loanType;
@@ -31,7 +31,11 @@ public class LoanDTO {
     private String accountNumber;
     private String purpose;
     private String collateralDescription;
+
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createdAt;
+
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime updatedAt;
 
     // Constructors

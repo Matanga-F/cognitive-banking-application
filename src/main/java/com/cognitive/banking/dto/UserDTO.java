@@ -5,11 +5,18 @@ import com.cognitive.banking.domain.enums.UserStatus;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import java.time.LocalDateTime;
 import java.util.UUID;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
 
+@Data
+@Builder
 public class UserDTO {
     private UUID userId;
     private String firstName;
     private String lastName;
+    private String username;
     private String email;
     private String phoneNumber;
     private String status;
@@ -22,14 +29,15 @@ public class UserDTO {
     private LocalDateTime lastLoginAt;
 
     // Constructors
-    public UserDTO(UUID userId, String firstName, String lastName, String email, String phoneNumber, UserStatus status, UserRole role, LocalDateTime createdAt, LocalDateTime lastLoginAt) {}
+    public UserDTO(UUID userId, String firstName, String lastName, String username, String email, String phoneNumber, UserStatus status, UserRole role, LocalDateTime createdAt, LocalDateTime lastLoginAt) {}
 
-    public UserDTO(UUID userId, String firstName, String lastName, String email,
+    public UserDTO(UUID userId, String firstName, String lastName, String username, String email,
                    String phoneNumber, String status, String role,
                    LocalDateTime createdAt, LocalDateTime lastLoginAt) {
         this.userId = userId;
         this.firstName = firstName;
         this.lastName = lastName;
+        this.username = username;
         this.email = email;
         this.phoneNumber = phoneNumber;
         this.status = status;
@@ -37,6 +45,8 @@ public class UserDTO {
         this.createdAt = createdAt;
         this.lastLoginAt = lastLoginAt;
     }
+
+    public UserDTO() {}
 
     // Getters and Setters
     public UUID getUserId() { return userId; }
@@ -69,5 +79,19 @@ public class UserDTO {
     // Computed field
     public String getFullName() {
         return firstName + " " + lastName;
+    }
+
+    public String setUsername(String username) {
+        return  this.username = username;
+    }
+
+    public void setEmailVerified(boolean emailVerified) {
+    }
+
+    public void setPhoneVerified(boolean phoneVerified) {
+    }
+
+    public void setTwoFactorEnabled(boolean twoFactorEnabled) {
+
     }
 }

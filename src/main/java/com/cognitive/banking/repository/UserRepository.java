@@ -37,6 +37,10 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
     boolean existsByPhoneNumber(String phoneNumber);
 
+    // In UserRepository.java
+    boolean existsByUsername(String username);
+    Optional<User> findByUsername(String username);
+
     // ==================== STATUS & ROLE QUERIES ====================
 
     long countByStatus(UserStatus status);
@@ -146,6 +150,80 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     @Query("UPDATE User u SET u.mfaSecret = null WHERE u.userId = :userId")
     int clearMfaSecret(@Param("userId") UUID userId);
 
+    // ==================== PASSWORD RESET TOKEN MANAGEMENT ====================
+
+    /**
+     * Find user by password reset token.
+     */
+    Optional<User> findByResetToken(String resetToken);
+
+    /**
+     * Update password reset token and expiry.
+     */
+    @Modifying
+    @Transactional
+    @Query("UPDATE User u SET u.resetToken = :token, u.resetTokenExpiry = :expiry WHERE u.email = :email")
+    int updateResetToken(@Param("email") String email,
+                         @Param("token") String token,
+                         @Param("expiry") LocalDateTime expiry);
+
+    /**
+     * Clear password reset token after successful password reset.
+     */
+    @Modifying
+    @Transactional
+    @Query("UPDATE User u SET u.resetToken = null, u.resetTokenExpiry = null WHERE u.email = :email")
+    int clearResetToken(@Param("email") String email);
+
+    // ==================== EMAIL VERIFICATION ====================
+
+    /**
+     * Find user by email verification token.
+     */
+    Optional<User> findByEmailVerificationToken(String token);
+
+    /**
+     * Update email verification status.
+     */
+    @Modifying
+    @Transactional
+    @Query("UPDATE User u SET u.emailVerified = true, u.emailVerificationToken = null, u.emailVerificationTokenExpiry = null WHERE u.userId = :userId")
+    int verifyEmail(@Param("userId") UUID userId);
+
+    /**
+     * Set email verification token for a user.
+     */
+    @Modifying
+    @Transactional
+    @Query("UPDATE User u SET u.emailVerificationToken = :token, u.emailVerificationTokenExpiry = :expiry WHERE u.email = :email")
+    int setEmailVerificationToken(@Param("email") String email,
+                                  @Param("token") String token,
+                                  @Param("expiry") LocalDateTime expiry);
+
+    // ==================== 2FA (TWO FACTOR AUTHENTICATION) ====================
+
+    /**
+     * Enable 2FA for a user.
+     */
+    @Modifying
+    @Transactional
+    @Query("UPDATE User u SET u.twoFactorEnabled = true, u.twoFactorSecret = :secret WHERE u.userId = :userId")
+    int enableTwoFactor(@Param("userId") UUID userId, @Param("secret") String secret);
+
+    /**
+     * Disable 2FA for a user.
+     */
+    @Modifying
+    @Transactional
+    @Query("UPDATE User u SET u.twoFactorEnabled = false, u.twoFactorSecret = null WHERE u.userId = :userId")
+    int disableTwoFactor(@Param("userId") UUID userId);
+
+    /**
+     * Find users with 2FA enabled.
+     */
+    @Query("SELECT u FROM User u WHERE u.twoFactorEnabled = true AND u.status = 'ACTIVE'")
+    List<User> findUsersWithTwoFactorEnabled();
+
     // ==================== ADMIN & MONITORING ====================
 
     /**
@@ -166,6 +244,18 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     @Query("SELECT u FROM User u WHERE u.locked = true")
     List<User> findAllLockedAccounts();
 
+    /**
+     * Find users who haven't verified their email.
+     */
+    @Query("SELECT u FROM User u WHERE u.emailVerified = false AND u.status = 'ACTIVE'")
+    List<User> findUnverifiedUsers();
+
+    /**
+     * Find users with expired verification tokens.
+     */
+    @Query("SELECT u FROM User u WHERE u.emailVerificationTokenExpiry IS NOT NULL AND u.emailVerificationTokenExpiry < :now")
+    List<User> findUsersWithExpiredVerificationTokens(@Param("now") LocalDateTime now);
+
     // ==================== SOFT DELETE ====================
 
     /**
@@ -182,6 +272,12 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     @Query("SELECT u FROM User u WHERE u.status != 'DELETED'")
     List<User> findAllNotDeleted();
 
+    /**
+     * Find soft-deleted users (for audit/recovery purposes).
+     */
+    @Query("SELECT u FROM User u WHERE u.status = 'DELETED'")
+    List<User> findAllDeleted();
+
     // ==================== BULK OPERATIONS (for scheduled jobs) ====================
 
     /**
@@ -191,4 +287,62 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     @Transactional
     @Query("UPDATE User u SET u.locked = false, u.lockedUntil = null WHERE u.locked = true AND u.lockedUntil IS NOT NULL AND u.lockedUntil < :now")
     int bulkUnlockExpired(@Param("now") LocalDateTime now);
+
+    /**
+     * Bulk delete users with expired verification tokens (cleanup job).
+     */
+    @Modifying
+    @Transactional
+    @Query("DELETE FROM User u WHERE u.emailVerified = false AND u.emailVerificationTokenExpiry IS NOT NULL AND u.emailVerificationTokenExpiry < :cutoffDate")
+    int deleteUnverifiedUsers(@Param("cutoffDate") LocalDateTime cutoffDate);
+
+    // ==================== ADVANCED SEARCH & FILTERING ====================
+
+    /**
+     * Search users by name or email (for admin search functionality).
+     */
+    @Query("SELECT u FROM User u WHERE " +
+            "LOWER(u.firstName) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
+            "LOWER(u.lastName) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
+            "LOWER(u.email) LIKE LOWER(CONCAT('%', :searchTerm, '%')) " +
+            "AND u.status != 'DELETED'")
+    Page<User> searchUsers(@Param("searchTerm") String searchTerm, Pageable pageable);
+
+    /**
+     * Find users by role and status combination.
+     */
+    @Query("SELECT u FROM User u WHERE u.role = :role AND u.status = :status")
+    List<User> findByRoleAndStatus(@Param("role") UserRole role, @Param("status") UserStatus status);
+
+    /**
+     * Get recently active users (last login within specified days).
+     */
+    @Query("SELECT u FROM User u WHERE u.lastLoginAt IS NOT NULL AND u.lastLoginAt > :sinceDate AND u.status = 'ACTIVE'")
+    List<User> findRecentlyActiveUsers(@Param("sinceDate") LocalDateTime sinceDate);
+
+    /**
+     * Get inactive users (no login for specified days).
+     */
+    @Query("SELECT u FROM User u WHERE u.lastLoginAt IS NULL OR u.lastLoginAt < :inactiveDate AND u.status = 'ACTIVE'")
+    List<User> findInactiveUsers(@Param("inactiveDate") LocalDateTime inactiveDate);
+
+    // ==================== AUDIT & REPORTING ====================
+
+    /**
+     * Count users by status for dashboard metrics.
+     */
+    @Query("SELECT u.status, COUNT(u) FROM User u GROUP BY u.status")
+    List<Object[]> countUsersByStatus();
+
+    /**
+     * Count users by role for dashboard metrics.
+     */
+    @Query("SELECT u.role, COUNT(u) FROM User u WHERE u.status = 'ACTIVE' GROUP BY u.role")
+    List<Object[]> countActiveUsersByRole();
+
+    /**
+     * Get user registration trend (last N days).
+     */
+    @Query("SELECT DATE(u.createdAt), COUNT(u) FROM User u WHERE u.createdAt >= :startDate GROUP BY DATE(u.createdAt)")
+    List<Object[]> getUserRegistrationTrend(@Param("startDate") LocalDateTime startDate);
 }

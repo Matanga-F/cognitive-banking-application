@@ -1,4 +1,3 @@
-// src/main/java/com/cognitive/banking/repository/TransactionRepository.java
 package com.cognitive.banking.repository;
 
 import com.cognitive.banking.domain.entity.Transaction;
@@ -7,6 +6,7 @@ import com.cognitive.banking.domain.enums.TransactionType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -28,9 +28,9 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
 
     List<Transaction> findByCardCardId(UUID cardId);
 
-    List<Transaction> findByTransactionType(TransactionType transactionType);
+    List<Transaction> findByTransactionStatus(TransactionStatus status);
 
-    List<Transaction> findByTransactionStatus(TransactionStatus transactionStatus);
+    List<Transaction> findByTransactionType(TransactionType type);
 
     @Query("SELECT t FROM Transaction t WHERE t.fromAccount.accountId = :accountId OR t.toAccount.accountId = :accountId ORDER BY t.transactionDate DESC")
     List<Transaction> findByAccountId(@Param("accountId") UUID accountId);
@@ -40,27 +40,36 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
                                                   @Param("startDate") LocalDateTime startDate,
                                                   @Param("endDate") LocalDateTime endDate);
 
-    @Query("SELECT t FROM Transaction t WHERE t.fromAccount.accountId = :accountId AND t.transactionType IN ('PURCHASE', 'ATM_WITHDRAWAL', 'TRANSFER_OUT', 'FEE') AND t.transactionDate BETWEEN :startDate AND :endDate")
-    List<Transaction> findDebitTransactionsByAccountIdAndDateRange(@Param("accountId") UUID accountId,
-                                                                   @Param("startDate") LocalDateTime startDate,
-                                                                   @Param("endDate") LocalDateTime endDate);
+    @Query(value = "SELECT * FROM transactions WHERE from_account_id = :accountId OR to_account_id = :accountId ORDER BY transaction_date DESC LIMIT :limit", nativeQuery = true)
+    List<Transaction> findTopNByAccountId(@Param("accountId") UUID accountId, @Param("limit") int limit);
 
-    @Query("SELECT t FROM Transaction t WHERE t.toAccount.accountId = :accountId AND t.transactionType IN ('DEPOSIT', 'TRANSFER_IN', 'REFUND', 'INTEREST') AND t.transactionDate BETWEEN :startDate AND :endDate")
-    List<Transaction> findCreditTransactionsByAccountIdAndDateRange(@Param("accountId") UUID accountId,
-                                                                    @Param("startDate") LocalDateTime startDate,
-                                                                    @Param("endDate") LocalDateTime endDate);
+    @Query("SELECT t FROM Transaction t WHERE t.fromAccount.accountId = :accountId AND t.transactionType = :type ORDER BY t.transactionDate DESC")
+    List<Transaction> findByFromAccountAccountIdAndTransactionType(@Param("accountId") UUID accountId,
+                                                                   @Param("type") TransactionType type);
 
-    @Query("SELECT SUM(t.amount) FROM Transaction t WHERE t.fromAccount.accountId = :accountId AND t.transactionStatus = 'COMPLETED' AND t.transactionDate BETWEEN :startDate AND :endDate")
-    BigDecimal getTotalDebitsByAccountIdAndDateRange(@Param("accountId") UUID accountId,
+    @Query("SELECT SUM(t.amount) FROM Transaction t WHERE (t.fromAccount.accountId = :accountId OR t.toAccount.accountId = :accountId) AND t.transactionDate BETWEEN :startDate AND :endDate AND t.transactionStatus = 'COMPLETED'")
+    BigDecimal getTotalTransactionAmountByAccountIdAndDateRange(@Param("accountId") UUID accountId,
+                                                                @Param("startDate") LocalDateTime startDate,
+                                                                @Param("endDate") LocalDateTime endDate);
+
+    @Query("SELECT SUM(t.amount) FROM Transaction t WHERE t.fromAccount.accountId = :accountId AND t.transactionType = :type AND t.transactionDate BETWEEN :startDate AND :endDate AND t.transactionStatus = 'COMPLETED'")
+    BigDecimal getTotalAmountByAccountIdAndDateRange(@Param("accountId") UUID accountId,
                                                      @Param("startDate") LocalDateTime startDate,
-                                                     @Param("endDate") LocalDateTime endDate);
+                                                     @Param("endDate") LocalDateTime endDate,
+                                                     @Param("type") TransactionType type);
 
-    @Query("SELECT SUM(t.amount) FROM Transaction t WHERE t.toAccount.accountId = :accountId AND t.transactionStatus = 'COMPLETED' AND t.transactionDate BETWEEN :startDate AND :endDate")
-    BigDecimal getTotalCreditsByAccountIdAndDateRange(@Param("accountId") UUID accountId,
-                                                      @Param("startDate") LocalDateTime startDate,
-                                                      @Param("endDate") LocalDateTime endDate);
+    @Query("SELECT COUNT(t) FROM Transaction t WHERE t.fromAccount.accountId = :accountId AND t.transactionDate > :since")
+    long countTransactionsSince(@Param("accountId") UUID accountId, @Param("since") LocalDateTime since);
 
-    Page<Transaction> findByFromAccountAccountId(UUID accountId, Pageable pageable);
+    @Query("SELECT t FROM Transaction t WHERE t.transactionDate BETWEEN :startDate AND :endDate")
+    Page<Transaction> findByTransactionDateBetween(@Param("startDate") LocalDateTime startDate,
+                                                   @Param("endDate") LocalDateTime endDate,
+                                                   Pageable pageable);
 
-    Page<Transaction> findByToAccountAccountId(UUID accountId, Pageable pageable);
+    @Modifying
+    @Query("UPDATE Transaction t SET t.transactionStatus = 'FAILED' WHERE t.transactionStatus = 'PENDING' AND t.transactionDate < :timeout")
+    int timeoutPendingTransactions(@Param("timeout") LocalDateTime timeout);
+    @Query("SELECT t FROM Transaction t WHERE t.fromAccount.user.userId = :userId OR t.toAccount.user.userId = :userId")
+    List<Transaction> findByUserUserId(@Param("userId") UUID userId);
+
 }

@@ -1,19 +1,22 @@
-// src/main/java/com/cognitive/banking/dto/CreateTransactionRequest.java
 package com.cognitive.banking.dto;
 
 import com.cognitive.banking.domain.enums.TransactionType;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Positive;
-
 import java.math.BigDecimal;
 import java.util.UUID;
 
 public class CreateTransactionRequest {
+
+    @NotNull(message = "From account ID is required")
+    private UUID fromAccountId;
+
+    private UUID toAccountId;
+    private UUID cardId;
+
     @NotNull(message = "Transaction type is required")
     private TransactionType transactionType;
 
     @NotNull(message = "Amount is required")
-    @Positive(message = "Amount must be positive")
     private BigDecimal amount;
 
     @NotNull(message = "Currency is required")
@@ -23,24 +26,34 @@ public class CreateTransactionRequest {
     private String merchantName;
     private String merchantCategory;
 
-    @NotNull(message = "From account ID is required")
-    private UUID fromAccountId;
-
-    private UUID toAccountId;
-    private UUID cardId;
-
     // Constructors
     public CreateTransactionRequest() {}
 
-    public CreateTransactionRequest(TransactionType transactionType, BigDecimal amount,
-                                    String currency, UUID fromAccountId) {
+    public CreateTransactionRequest(UUID fromAccountId, UUID toAccountId, UUID cardId,
+                                    TransactionType transactionType, BigDecimal amount,
+                                    String currency, String description,
+                                    String merchantName, String merchantCategory) {
+        this.fromAccountId = fromAccountId;
+        this.toAccountId = toAccountId;
+        this.cardId = cardId;
         this.transactionType = transactionType;
         this.amount = amount;
         this.currency = currency;
-        this.fromAccountId = fromAccountId;
+        this.description = description;
+        this.merchantName = merchantName;
+        this.merchantCategory = merchantCategory;
     }
 
     // Getters and Setters
+    public UUID getFromAccountId() { return fromAccountId; }
+    public void setFromAccountId(UUID fromAccountId) { this.fromAccountId = fromAccountId; }
+
+    public UUID getToAccountId() { return toAccountId; }
+    public void setToAccountId(UUID toAccountId) { this.toAccountId = toAccountId; }
+
+    public UUID getCardId() { return cardId; }
+    public void setCardId(UUID cardId) { this.cardId = cardId; }
+
     public TransactionType getTransactionType() { return transactionType; }
     public void setTransactionType(TransactionType transactionType) { this.transactionType = transactionType; }
 
@@ -58,13 +71,4 @@ public class CreateTransactionRequest {
 
     public String getMerchantCategory() { return merchantCategory; }
     public void setMerchantCategory(String merchantCategory) { this.merchantCategory = merchantCategory; }
-
-    public UUID getFromAccountId() { return fromAccountId; }
-    public void setFromAccountId(UUID fromAccountId) { this.fromAccountId = fromAccountId; }
-
-    public UUID getToAccountId() { return toAccountId; }
-    public void setToAccountId(UUID toAccountId) { this.toAccountId = toAccountId; }
-
-    public UUID getCardId() { return cardId; }
-    public void setCardId(UUID cardId) { this.cardId = cardId; }
 }

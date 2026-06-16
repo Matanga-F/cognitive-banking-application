@@ -4,5 +4,5 @@ public enum UserRole {
     CUSTOMER,
     ADMIN,
     SUPPORT,
-    MANAGER
+    ACCOUNT_MANAGER, LOAN_OFFICER, AUDITOR, MANAGER
 }

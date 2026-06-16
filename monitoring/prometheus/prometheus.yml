@@ -1,84 +1,235 @@
+# prometheus.yml - Complete Enterprise Configuration
 global:
   scrape_interval: 15s
   evaluation_interval: 15s
+  scrape_timeout: 10s
+
   external_labels:
-    monitor: 'cognitive-banking'
-    environment: 'docker'
+    environment: ${ENVIRONMENT:-production}
+    region: ${AWS_REGION:-eu-west-1}
+    cluster: ${K8S_CLUSTER:-cognitive-bank-prod}
+    team: "cognitive-banking"
 
-# ======================================================
-# 🔔 ALERT RULES
-# ======================================================
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - 'alertmanager:9093'
+      timeout: 10s
+      api_version: v2
+
+# Rule files
 rule_files:
-  - "alert.rules.yml"
+  - "/etc/prometheus/alerts/*.yml"
+  - "/etc/prometheus/recording-rules/*.yml"
 
-# ======================================================
-# 🔍 SCRAPE CONFIGS
-# ======================================================
+# Remote write for long-term storage (optional - comment out if not using)
+# remote_write:
+#   - url: ${REMOTE_WRITE_URL}
+#     queue_config:
+#       capacity: 10000
+#       max_shards: 200
+#       min_shards: 1
+#       max_samples_per_send: 5000
+#       batch_send_deadline: 5s
+#     write_relabel_configs:
+#       - source_labels: [__name__]
+#         regex: '(up|scrape_duration_seconds|scrape_samples_.*)'
+#         action: keep
+
+# Scrape configurations
 scrape_configs:
-
-  # -------------------
-  # PROMETHEUS ITSELF
-  # -------------------
+  # ============================================
+  # PROMETHEUS SELF-MONITORING
+  # ============================================
   - job_name: 'prometheus'
     scrape_interval: 30s
     static_configs:
       - targets: ['localhost:9090']
+        labels:
+          component: 'prometheus'
+          tier: 'infrastructure'
 
-  # -------------------
-  # SPRING BOOT APP (FIXED)
-  # -------------------
-  - job_name: 'cognitive-banking-application'
+  # ============================================
+  # SPRING BOOT APPLICATION - FIXED PATH
+  # ============================================
+  - job_name: 'cognitive-banking-app'
     metrics_path: '/api/cognitive/bank/actuator/prometheus'
     scrape_interval: 10s
-    static_configs:
-      - targets: ['cognitive-bank-app:8080']
+    scrape_timeout: 8s
 
+    # Service discovery for K8s (optional - remove if not using K8s)
+    # kubernetes_sd_configs:
+    #   - role: pod
+    #     namespaces:
+    #       names:
+    #         - cognitive-bank
+    # relabel_configs:
+    #   - source_labels: [__meta_kubernetes_pod_label_app]
+    #     action: keep
+    #     regex: cognitive-bank-app
+    #   - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+    #     action: keep
+    #     regex: true
+    #   - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+    #     action: replace
+    #     regex: (.+):(?:\d+);(\d+)
+    #     replacement: $1:$2
+    #     target_label: __address__
+    #   - source_labels: [__meta_kubernetes_pod_name]
+    #     target_label: pod
+    #   - source_labels: [__meta_kubernetes_pod_node_name]
+    #     target_label: node
+    #   - source_labels: [__meta_kubernetes_namespace]
+    #     target_label: namespace
+    #   - action: labelmap
+    #     regex: __meta_kubernetes_pod_label_(.+)
+
+    # Docker/Standalone targets
+    static_configs:
+      - targets:
+          - 'cognitive-bank-app:8080'  # Docker service name
+          - 'localhost:8080'           # Local development
+        labels:
+          app: 'cognitive-banking'
+          component: 'api'
+          tier: 'application'
+          deployment: '${DEPLOYMENT_TYPE:-docker}'
+
+  # ============================================
+  # POSTGRES EXPORTER
+  # ============================================
+  - job_name: 'postgres-exporter'
+    scrape_interval: 30s
+    scrape_timeout: 25s
+    static_configs:
+      - targets:
+          - 'postgres-exporter:9187'
+          - 'localhost:9187'
+        labels:
+          service: 'postgresql'
+          component: 'database'
+          tier: 'data'
+          environment: 'production'
     relabel_configs:
       - source_labels: [__address__]
         target_label: instance
-        regex: '([^:]+)(:[0-9]+)?'
-        replacement: '${1}'
-      - source_labels: [job]
-        target_label: job
-        replacement: 'cognitive-banking-application'
+        replacement: 'postgres-${INSTANCE:-prod}'
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: '(pg_up|pg_stat_database_numbackends|pg_stat_database_xact_commit|pg_stat_database_xact_rollback|pg_stat_database_blks_read|pg_stat_database_blks_hit)'
+        action: keep
 
-  # -------------------
-  # POSTGRES EXPORTER
-  # -------------------
-  - job_name: 'postgres'
-    scrape_interval: 30s
-    static_configs:
-      - targets: ['postgres-exporter:9187']
-        labels:
-          service: 'postgresql'
-          db: 'cognitive_bank'
-
-  # -------------------
+  # ============================================
   # REDIS EXPORTER
-  # -------------------
-  - job_name: 'redis'
+  # ============================================
+  - job_name: 'redis-exporter'
     scrape_interval: 30s
+    scrape_timeout: 25s
     static_configs:
-      - targets: ['redis-exporter:9121']
+      - targets:
+          - 'redis-exporter:9121'
+          - 'localhost:9121'
         labels:
           service: 'redis'
-          instance: 'cognitive-bank-redis'
+          component: 'cache'
+          tier: 'data'
+    params:
+      check-keys: ['cognitive:*', 'banking:*', 'session:*']
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: '(redis_up|redis_connected_clients|redis_memory_used_bytes|redis_keyspace_hits_total|redis_keyspace_misses_total|redis_commands_processed_total)'
+        action: keep
 
-  # -------------------
-  # NODE EXPORTER
-  # -------------------
+  # ============================================
+  # NODE EXPORTER (System Metrics)
+  # ============================================
   - job_name: 'node-exporter'
     scrape_interval: 30s
+    scrape_timeout: 25s
     static_configs:
-      - targets: ['node-exporter:9100']
+      - targets:
+          - 'node-exporter:9100'
+          - 'localhost:9100'
         labels:
-          service: 'node-exporter'
-          instance: 'docker-host'
+          service: 'node'
+          component: 'system'
+          tier: 'infrastructure'
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: '(node_cpu_seconds_total|node_memory_MemTotal_bytes|node_memory_MemFree_bytes|node_memory_MemAvailable_bytes|node_filesystem_avail_bytes|node_network_receive_bytes_total|node_network_transmit_bytes_total)'
+        action: keep
 
-  # -------------------
-  # CADVISOR
-  # -------------------
+  # ============================================
+  # BLACKBOX PROBER (External monitoring)
+  # ============================================
+  - job_name: 'blackbox'
+    metrics_path: /probe
+    scrape_interval: 60s
+    scrape_timeout: 30s
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets:
+          - 'http://cognitive-bank-app:8080/api/cognitive/bank/actuator/health'
+          - 'http://cognitive-bank-app:8080/api/cognitive/bank/actuator/info'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: 'blackbox-exporter:9115'
+      - source_labels: [__param_target]
+        regex: '.*/health'
+        action: replace
+        target_label: probe_type
+        replacement: 'health'
+      - source_labels: [__param_target]
+        regex: '.*/info'
+        action: replace
+        target_label: probe_type
+        replacement: 'info'
+
+  # ============================================
+  # CADVISOR (Docker container metrics)
+  # ============================================
   - job_name: 'cadvisor'
     scrape_interval: 30s
+    scrape_timeout: 25s
     static_configs:
-      - targets: ['cadvisor:8080']
+      - targets:
+          - 'cadvisor:8080'
+        labels:
+          service: 'docker'
+          component: 'container'
+          tier: 'infrastructure'
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: '(container_cpu_usage_seconds_total|container_memory_usage_bytes|container_network_receive_bytes_total|container_network_transmit_bytes_total)'
+        action: keep
+
+  # ============================================
+  # CUSTOM BANKING METRICS (Additional)
+  # ============================================
+  - job_name: 'banking-custom-metrics'
+    metrics_path: '/api/cognitive/bank/actuator/metrics'
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    static_configs:
+      - targets:
+          - 'cognitive-bank-app:8080'
+          - 'localhost:8080'
+        labels:
+          app: 'cognitive-banking'
+          component: 'custom-metrics'
+          tier: 'application'
+    params:
+      # Request specific banking metrics
+      tag:
+        - 'application=cognitive-banking'
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: '(banking_.*|transactions_.*|loans_.*|accounts_.*|security_.*)'
+        action: keep

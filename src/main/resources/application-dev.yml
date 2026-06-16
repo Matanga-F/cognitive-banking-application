@@ -4,32 +4,48 @@ spring:
       on-profile: dev
 
   datasource:
-    url: jdbc:h2:mem:cognitive_bank;MODE=PostgreSQL;DB_CLOSE_DELAY=-1
+    url: jdbc:h2:mem:cognitive_bank_dev;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
     driver-class-name: org.h2.Driver
     username: sa
     password:
-
-  jpa:
-    database-platform: org.hibernate.dialect.H2Dialect
-    hibernate:
-      ddl-auto: update
-    show-sql: true
-    properties:
-      hibernate:
-        format_sql: true
+    hikari:
+      maximum-pool-size: 5
+      minimum-idle: 1
 
   h2:
     console:
       enabled: true
       path: /h2-console
 
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: validate
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+  flyway:
+    enabled: false
+
   data:
     redis:
-      port: 6379
-      database: 0
-      password: ""
       host: localhost
+      port: 6379
+      timeout: 2s
+
+server:
+  port: 8080
 
 logging:
   level:
-    root: DEBUG
+    root: INFO
+    com.cognitive.banking: DEBUG
+    org.hibernate.SQL: DEBUG
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"

@@ -1,14 +1,22 @@
-// src/main/java/com/cognitive/banking/dto/UpdateCardRequest.java
 package com.cognitive.banking.dto;
 
 import com.cognitive.banking.domain.enums.CardStatus;
-
 import java.math.BigDecimal;
 
 public class UpdateCardRequest {
+
     private BigDecimal dailyLimit;
     private BigDecimal creditLimit;
     private CardStatus cardStatus;
+
+    // Constructors
+    public UpdateCardRequest() {}
+
+    public UpdateCardRequest(BigDecimal dailyLimit, BigDecimal creditLimit, CardStatus cardStatus) {
+        this.dailyLimit = dailyLimit;
+        this.creditLimit = creditLimit;
+        this.cardStatus = cardStatus;
+    }
 
     // Getters and Setters
     public BigDecimal getDailyLimit() { return dailyLimit; }

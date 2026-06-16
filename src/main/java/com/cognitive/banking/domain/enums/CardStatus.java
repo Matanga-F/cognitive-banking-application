@@ -6,5 +6,6 @@ public enum CardStatus {
     BLOCKED,
     EXPIRED,
     LOST_STOLEN,
+    CANCELLED,
     PENDING_ACTIVATION
 }

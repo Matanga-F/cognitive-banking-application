@@ -1,0 +1,29 @@
+groups:
+  - name: security_alerts
+    interval: 30s
+    rules:
+      # Failed login attempts
+      - alert: MultipleFailedLogins
+        expr: |
+          sum by (username) (
+            rate(security_authentication_failures_total[5m])
+          ) > 5
+        for: 2m
+        labels:
+          severity: warning
+          component: security
+        annotations:
+          summary: "Multiple failed login attempts"
+          description: "User {{ $labels.username }} has {{ $value }} failed login attempts"
+
+      # Suspicious activity
+      - alert: SuspiciousActivity
+        expr: |
+          rate(security_suspicious_activities_total[10m]) > 10
+        for: 1m
+        labels:
+          severity: critical
+          component: security
+        annotations:
+          summary: "Suspicious activity detected"
+          description: "High rate of suspicious activities: {{ $value }}/s"

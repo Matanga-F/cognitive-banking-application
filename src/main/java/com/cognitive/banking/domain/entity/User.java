@@ -57,6 +57,34 @@ public class User {
     private LocalDateTime updatedAt;
     private LocalDateTime lastLoginAt;
 
+    // ========== Password Reset Fields ==========
+    @Column(name = "reset_token")
+    private String resetToken;
+
+    @Column(name = "reset_token_expiry")
+    private LocalDateTime resetTokenExpiry;
+
+    @Column(name = "email_verification_token")
+    private String emailVerificationToken;
+
+    @Column(name = "email_verification_token_expiry")
+    private LocalDateTime emailVerificationTokenExpiry;
+
+    @Column(name = "email_verified")
+    private boolean emailVerified = false;
+
+    @Column(name = "two_factor_secret")
+    private String twoFactorSecret;
+
+    @Column(name = "two_factor_enabled")
+    private boolean twoFactorEnabled = false;
+
+    @Column(name = "phone_verified")
+    private boolean phoneVerified = false;
+
+    @Column(unique = true, nullable = false)
+    private String username;
+
     // Constructors
     public User() {}
 
@@ -79,7 +107,7 @@ public class User {
      * - If locked flag is true and lockedUntil is future → locked.
      */
     public boolean isAccountNonLocked() {
-        if (status != UserStatus.ACTIVE) {
+        if (status != UserStatus.ACTIVE && status != UserStatus.LOCKED) {
             return false;
         }
         if (locked && lockedUntil != null && lockedUntil.isBefore(LocalDateTime.now())) {
@@ -98,6 +126,7 @@ public class User {
     public void lockTemporarily(int durationMinutes) {
         this.locked = true;
         this.lockedUntil = LocalDateTime.now().plusMinutes(durationMinutes);
+        this.status = UserStatus.LOCKED;
     }
 
     /**
@@ -106,6 +135,7 @@ public class User {
     public void lockPermanently() {
         this.locked = true;
         this.lockedUntil = null;
+        this.status = UserStatus.LOCKED;
     }
 
     /**
@@ -114,6 +144,7 @@ public class User {
     public void unlock() {
         this.locked = false;
         this.lockedUntil = null;
+        this.status = UserStatus.ACTIVE;
     }
 
     public boolean isCredentialsNonExpired() {
@@ -194,4 +225,39 @@ public class User {
 
     public LocalDateTime getLastLoginAt() { return lastLoginAt; }
     public void setLastLoginAt(LocalDateTime lastLoginAt) { this.lastLoginAt = lastLoginAt; }
+
+    public String getResetToken() { return resetToken; }
+    public void setResetToken(String resetToken) { this.resetToken = resetToken; }
+
+    public LocalDateTime getResetTokenExpiry() { return resetTokenExpiry; }
+    public void setResetTokenExpiry(LocalDateTime resetTokenExpiry) { this.resetTokenExpiry = resetTokenExpiry; }
+
+    public String getEmailVerificationToken() { return emailVerificationToken; }
+    public void setEmailVerificationToken(String emailVerificationToken) { this.emailVerificationToken = emailVerificationToken; }
+
+    public LocalDateTime getEmailVerificationTokenExpiry() { return emailVerificationTokenExpiry; }
+    public void setEmailVerificationTokenExpiry(LocalDateTime emailVerificationTokenExpiry) { this.emailVerificationTokenExpiry = emailVerificationTokenExpiry; }
+
+    public boolean isEmailVerified() { return emailVerified; }
+    public void setEmailVerified(boolean emailVerified) { this.emailVerified = emailVerified; }
+
+    public String getTwoFactorSecret() { return twoFactorSecret; }
+    public void setTwoFactorSecret(String twoFactorSecret) { this.twoFactorSecret = twoFactorSecret; }
+
+    public boolean isTwoFactorEnabled() { return twoFactorEnabled; }
+    public void setTwoFactorEnabled(boolean twoFactorEnabled) { this.twoFactorEnabled = twoFactorEnabled; }
+
+    public boolean isPhoneVerified() { return phoneVerified; }
+    public void setPhoneVerified(boolean phoneVerified) { this.phoneVerified = phoneVerified; }
+
+    public String getUsername() { return username; }
+    public void setUsername(String username) { this.username = username; }
+    // Alias methods for compatibility with some services
+    public void setPasswordHash(String encodedPassword) {
+        this.password = encodedPassword;
+    }
+
+    public String getPasswordHash() {
+        return this.password;
+    }
 }

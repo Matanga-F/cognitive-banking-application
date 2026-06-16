@@ -1,0 +1,91 @@
+groups:
+  - name: banking_alerts
+    interval: 30s
+    rules:
+      # Application down alert
+      - alert: BankingAppDown
+        expr: up{job="cognitive-banking-app"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: api
+        annotations:
+          summary: "Banking application is down"
+          description: "The cognitive banking application has been unreachable for 1 minute"
+
+      # High error rate alert
+      - alert: HighErrorRate
+        expr: rate(http_server_requests_seconds_count{status=~"5.."}[5m]) / rate(http_server_requests_seconds_count[5m]) > 0.05
+        for: 2m
+        labels:
+          severity: warning
+          component: api
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is {{ $value | humanizePercentage }}"
+
+      # Slow response time alert
+      - alert: SlowResponseTime
+        expr: histogram_quantile(0.95, rate(http_server_requests_seconds_bucket[5m])) > 2
+        for: 5m
+        labels:
+          severity: warning
+          component: api
+        annotations:
+          summary: "Slow response times"
+          description: "95th percentile response time is {{ $value }}s"
+
+      # Database connection issues
+      - alert: DatabaseConnectionIssues
+        expr: pg_up{job="postgres-exporter"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: database
+        annotations:
+          summary: "PostgreSQL connection failed"
+          description: "Cannot connect to PostgreSQL exporter"
+
+      # Redis connection issues
+      - alert: RedisConnectionIssues
+        expr: redis_up{job="redis-exporter"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: cache
+        annotations:
+          summary: "Redis connection failed"
+          description: "Cannot connect to Redis exporter"
+
+      # High memory usage
+      - alert: HighMemoryUsage
+        expr: (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes > 0.85
+        for: 5m
+        labels:
+          severity: warning
+          component: system
+        annotations:
+          summary: "High memory usage"
+          description: "Memory usage is {{ $value | humanizePercentage }}"
+
+      # Many failed transactions
+      - alert: ManyFailedTransactions
+        expr: rate(banking_transactions_created_total{status="failed"}[5m]) > 10
+        for: 2m
+        labels:
+          severity: warning
+          component: transactions
+        annotations:
+          summary: "High transaction failure rate"
+          description: "{{ $value }} transactions failing per second"
+
+      # Rate limiting activated
+      - alert: RateLimitingActivated
+        expr: rate(banking_rate_limiting_hits_total[1m]) > 0
+        for: 1m
+        labels:
+          severity: info
+          component: security
+        annotations:
+          summary: "Rate limiting active"
+          description: "Rate limiting is being triggered"

@@ -5,6 +5,7 @@ public enum TransactionType {
     // Debit transactions
     PURCHASE,
     ATM_WITHDRAWAL,
+    TRANSFER,
     TRANSFER_OUT,
     FEE,
     PAYMENT,

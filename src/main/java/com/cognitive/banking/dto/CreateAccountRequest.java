@@ -1,15 +1,12 @@
-// src/main/java/com/cognitive/banking/dto/CreateAccountRequest.java
 package com.cognitive.banking.dto;
 
 import com.cognitive.banking.domain.enums.AccountType;
-
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Positive;
 import java.math.BigDecimal;
 import java.util.UUID;
 
 public class CreateAccountRequest {
+
     @NotNull(message = "User ID is required")
     private UUID userId;
 
@@ -19,9 +16,7 @@ public class CreateAccountRequest {
     @NotNull(message = "Currency is required")
     private String currency;
 
-    @Positive(message = "Initial deposit must be positive")
     private BigDecimal initialDeposit;
-
     private BigDecimal overdraftLimit;
     private BigDecimal interestRate;
 
@@ -29,11 +24,14 @@ public class CreateAccountRequest {
     public CreateAccountRequest() {}
 
     public CreateAccountRequest(UUID userId, AccountType accountType, String currency,
-                                BigDecimal initialDeposit) {
+                                BigDecimal initialDeposit, BigDecimal overdraftLimit,
+                                BigDecimal interestRate) {
         this.userId = userId;
         this.accountType = accountType;
         this.currency = currency;
         this.initialDeposit = initialDeposit;
+        this.overdraftLimit = overdraftLimit;
+        this.interestRate = interestRate;
     }
 
     // Getters and Setters

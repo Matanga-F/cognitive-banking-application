@@ -2,10 +2,12 @@ package com.cognitive.banking.service;
 
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.concurrent.TimeUnit;
 
 @Service
+@Slf4j
 public class RedisTokenBlacklistService {
 
     private final RedisTemplate<String, String> redisTemplate;

@@ -1,0 +1,62 @@
+# alertmanager.yml
+global:
+  slack_api_url: ${SLACK_WEBHOOK_URL}
+  pagerduty_url: https://events.pagerduty.com/v2/enqueue
+
+route:
+  group_by: ['alertname', 'cluster', 'service']
+  group_wait: 10s
+  group_interval: 10s
+  repeat_interval: 12h
+  receiver: 'default-receiver'
+
+  routes:
+    # Critical alerts go to PagerDuty
+    - match:
+        severity: critical
+      receiver: pagerduty-critical
+      continue: true
+      group_wait: 0s
+      repeat_interval: 5m
+
+    # Warning alerts go to Slack
+    - match:
+        severity: warning
+      receiver: slack-warnings
+      continue: true
+
+    # Info alerts go to Teams/Slack info channel
+    - match:
+        severity: info
+      receiver: slack-info
+
+receivers:
+  - name: 'pagerduty-critical'
+    pagerduty_configs:
+      - service_key: ${PAGERDUTY_SERVICE_KEY}
+        severity: critical
+        description: '{{ .CommonAnnotations.summary }}'
+        details:
+          description: '{{ .CommonAnnotations.description }}'
+          runbook: '{{ .CommonAnnotations.runbook }}'
+
+  - name: 'slack-warnings'
+    slack_configs:
+      - channel: '#banking-alerts-warning'
+        title: '⚠️ {{ .CommonAnnotations.summary }}'
+        text: |
+          *Alert:* {{ .CommonAnnotations.description }}
+          *Severity:* {{ .Labels.severity }}
+          *Service:* {{ .Labels.service }}
+          *Time:* {{ .StartsAt }}
+          *Dashboard:* {{ .CommonAnnotations.dashboard }}
+
+  - name: 'slack-info'
+    slack_configs:
+      - channel: '#banking-alerts-info'
+        title: 'ℹ️ {{ .CommonAnnotations.summary }}'
+        text: '{{ .CommonAnnotations.description }}'
+
+  - name: 'default-receiver'
+    webhook_configs:
+      - url: http://webhook-receiver:8080/alerts

@@ -1,14 +1,14 @@
-// src/main/java/com/cognitive/banking/dto/TransactionDTO.java
 package com.cognitive.banking.dto;
 
 import com.cognitive.banking.domain.enums.TransactionStatus;
 import com.cognitive.banking.domain.enums.TransactionType;
-
+import com.fasterxml.jackson.annotation.JsonFormat;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
 public class TransactionDTO {
+
     private UUID transactionId;
     private String transactionReference;
     private TransactionType transactionType;
@@ -26,8 +26,14 @@ public class TransactionDTO {
     private String cardNumber;
     private BigDecimal balanceAfter;
     private BigDecimal availableBalanceAfter;
+
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime transactionDate;
+
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime postedDate;
+
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createdAt;
 
     // Constructors
@@ -36,9 +42,8 @@ public class TransactionDTO {
     public TransactionDTO(UUID transactionId, String transactionReference, TransactionType transactionType,
                           TransactionStatus transactionStatus, BigDecimal amount, String currency,
                           String description, String merchantName, String merchantCategory,
-                          UUID fromAccountId, String fromAccountNumber, UUID toAccountId,
-                          String toAccountNumber, UUID cardId, String cardNumber,
-                          BigDecimal balanceAfter, BigDecimal availableBalanceAfter,
+                          UUID fromAccountId, String fromAccountNumber, UUID toAccountId, String toAccountNumber,
+                          UUID cardId, String cardNumber, BigDecimal balanceAfter, BigDecimal availableBalanceAfter,
                           LocalDateTime transactionDate, LocalDateTime postedDate, LocalDateTime createdAt) {
         this.transactionId = transactionId;
         this.transactionReference = transactionReference;

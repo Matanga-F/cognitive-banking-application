@@ -1,28 +1,41 @@
 -- V4__create_loans_table.sql
--- Baseline migration for the loans table
+-- Create loans table
 
-CREATE TABLE loans (
-    loan_id UUID PRIMARY KEY,                          -- matches JpaRepository<Loan, UUID>
-    user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
-    account_id UUID NOT NULL REFERENCES accounts(account_id) ON DELETE CASCADE,
-    loan_number VARCHAR(30) NOT NULL UNIQUE,           -- supports findByLoanNumber
-    loan_type VARCHAR(20) NOT NULL,                    -- maps to LoanType enum
-    loan_status VARCHAR(20) NOT NULL,                  -- maps to LoanStatus enum
-    principal_amount NUMERIC(15,2) NOT NULL,           -- original loan amount
-    interest_rate NUMERIC(5,2) NOT NULL,               -- interest rate %
-    remaining_balance NUMERIC(15,2) NOT NULL,          -- supports getTotalOutstandingBalanceByUserId
-    start_date DATE NOT NULL,                          -- loan start date
-    maturity_date DATE NOT NULL,                       -- supports findMaturedLoans
-    next_payment_date DATE NULL,                       -- supports findLoansWithDuePayments
+CREATE TABLE IF NOT EXISTS loans (
+    loan_id UUID PRIMARY KEY,
+    loan_number VARCHAR(20) NOT NULL UNIQUE,
+    loan_type VARCHAR(30) NOT NULL,
+    loan_status VARCHAR(20) NOT NULL,
+    principal_amount DECIMAL(19,2) NOT NULL,
+    interest_rate DECIMAL(5,4) NOT NULL,
+    term_months INTEGER NOT NULL,
+    remaining_term_months INTEGER NOT NULL,
+    monthly_payment DECIMAL(19,2) NOT NULL,
+    remaining_balance DECIMAL(19,2) NOT NULL,
+    total_interest_paid DECIMAL(19,2) DEFAULT 0,
+    total_amount_paid DECIMAL(19,2) DEFAULT 0,
+    next_payment_date DATE,
+    maturity_date DATE NOT NULL,
+    disbursement_date DATE,
+    user_id UUID NOT NULL,
+    account_id UUID,
+    purpose TEXT,
+    collateral_description TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Helpful indexes for queries in LoanRepository
-CREATE INDEX idx_loans_user_id ON loans(user_id);
-CREATE INDEX idx_loans_account_id ON loans(account_id);
-CREATE INDEX idx_loans_number ON loans(loan_number);
-CREATE INDEX idx_loans_status ON loans(loan_status);
-CREATE INDEX idx_loans_type ON loans(loan_type);
-CREATE INDEX idx_loans_next_payment_date ON loans(next_payment_date);
-CREATE INDEX idx_loans_maturity_date ON loans(maturity_date);
+-- Create indexes
+CREATE INDEX IF NOT EXISTS idx_loans_user_id ON loans(user_id);
+CREATE INDEX IF NOT EXISTS idx_loans_account_id ON loans(account_id);
+CREATE INDEX IF NOT EXISTS idx_loans_status ON loans(loan_status);
+CREATE INDEX IF NOT EXISTS idx_loans_type ON loans(loan_type);
+CREATE INDEX IF NOT EXISTS idx_loans_number ON loans(loan_number);
+CREATE INDEX IF NOT EXISTS idx_loans_maturity_date ON loans(maturity_date);
+
+-- Add foreign key constraints
+ALTER TABLE loans ADD CONSTRAINT fk_loans_user
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE;
+
+ALTER TABLE loans ADD CONSTRAINT fk_loans_account
+    FOREIGN KEY (account_id) REFERENCES accounts(account_id) ON DELETE SET NULL;

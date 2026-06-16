@@ -1,8 +1,6 @@
-// src/main/java/com/cognitive/banking/domain/entity/LoanPayment.java
 package com.cognitive.banking.domain.entity;
 
 import jakarta.persistence.*;
-
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -11,9 +9,13 @@ import java.util.UUID;
 @Entity
 @Table(name = "loan_payments")
 public class LoanPayment {
+
+    public enum PaymentStatus {
+        PENDING, PAID, LATE, PARTIAL
+    }
+
     @Id
-    @GeneratedValue
-    @Column(name = "payment_id")
+    @GeneratedValue(strategy = GenerationType.UUID)
     private UUID paymentId;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -23,11 +25,11 @@ public class LoanPayment {
     @Column(name = "payment_number", nullable = false)
     private Integer paymentNumber;
 
-    @Column(name = "payment_date")
-    private LocalDate paymentDate;
-
     @Column(name = "due_date", nullable = false)
     private LocalDate dueDate;
+
+    @Column(name = "payment_date")
+    private LocalDate paymentDate;
 
     @Column(name = "principal_amount", precision = 15, scale = 2, nullable = false)
     private BigDecimal principalAmount;
@@ -41,8 +43,9 @@ public class LoanPayment {
     @Column(name = "remaining_balance", precision = 15, scale = 2, nullable = false)
     private BigDecimal remainingBalance;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "payment_status", nullable = false)
-    private String paymentStatus; // PENDING, PAID, OVERDUE, PARTIAL
+    private PaymentStatus paymentStatus;
 
     @Column(name = "paid_date")
     private LocalDate paidDate;
@@ -53,23 +56,10 @@ public class LoanPayment {
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
-    // Constructors
     public LoanPayment() {
         this.createdAt = LocalDateTime.now();
-        this.paymentStatus = "PENDING";
+        this.paymentStatus = PaymentStatus.PENDING;
         this.lateFee = BigDecimal.ZERO;
-    }
-
-    public LoanPayment(Loan loan, Integer paymentNumber, LocalDate dueDate,
-                       BigDecimal principalAmount, BigDecimal interestAmount, BigDecimal remainingBalance) {
-        this();
-        this.loan = loan;
-        this.paymentNumber = paymentNumber;
-        this.dueDate = dueDate;
-        this.principalAmount = principalAmount;
-        this.interestAmount = interestAmount;
-        this.totalPayment = principalAmount.add(interestAmount);
-        this.remainingBalance = remainingBalance;
     }
 
     // Getters and Setters
@@ -82,11 +72,11 @@ public class LoanPayment {
     public Integer getPaymentNumber() { return paymentNumber; }
     public void setPaymentNumber(Integer paymentNumber) { this.paymentNumber = paymentNumber; }
 
-    public LocalDate getPaymentDate() { return paymentDate; }
-    public void setPaymentDate(LocalDate paymentDate) { this.paymentDate = paymentDate; }
-
     public LocalDate getDueDate() { return dueDate; }
     public void setDueDate(LocalDate dueDate) { this.dueDate = dueDate; }
+
+    public LocalDate getPaymentDate() { return paymentDate; }
+    public void setPaymentDate(LocalDate paymentDate) { this.paymentDate = paymentDate; }
 
     public BigDecimal getPrincipalAmount() { return principalAmount; }
     public void setPrincipalAmount(BigDecimal principalAmount) { this.principalAmount = principalAmount; }
@@ -100,8 +90,8 @@ public class LoanPayment {
     public BigDecimal getRemainingBalance() { return remainingBalance; }
     public void setRemainingBalance(BigDecimal remainingBalance) { this.remainingBalance = remainingBalance; }
 
-    public String getPaymentStatus() { return paymentStatus; }
-    public void setPaymentStatus(String paymentStatus) { this.paymentStatus = paymentStatus; }
+    public PaymentStatus getPaymentStatus() { return paymentStatus; }
+    public void setPaymentStatus(PaymentStatus paymentStatus) { this.paymentStatus = paymentStatus; }
 
     public LocalDate getPaidDate() { return paidDate; }
     public void setPaidDate(LocalDate paidDate) { this.paidDate = paidDate; }
@@ -112,20 +102,8 @@ public class LoanPayment {
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 
-    // Helper methods
-    public boolean isOverdue() {
-        return "PENDING".equals(paymentStatus) && dueDate.isBefore(LocalDate.now());
-    }
-
     public void markAsPaid() {
-        this.paymentStatus = "PAID";
+        this.paymentStatus = PaymentStatus.PAID;
         this.paidDate = LocalDate.now();
-        this.paymentDate = LocalDate.now();
-    }
-
-    public void markAsOverdue(BigDecimal lateFeeAmount) {
-        this.paymentStatus = "OVERDUE";
-        this.lateFee = lateFeeAmount;
-        this.totalPayment = this.totalPayment.add(lateFeeAmount);
     }
 }

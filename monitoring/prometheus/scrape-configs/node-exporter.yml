@@ -1,0 +1,10 @@
+# Node Exporter for system metrics
+- job_name: 'node'
+  static_configs:
+    - targets:
+        - 'node-exporter:9100'   # Docker service
+        - 'localhost:9100'        # Local development
+      labels:
+        application: 'cognitive-banking'
+        component: 'infrastructure'
+        type: 'node'

@@ -1,0 +1,15 @@
+groups:
+  - name: database_recording_rules
+    interval: 1m
+    rules:
+      - record: database:active_connections:1m
+        expr: avg(pg_stat_database_numbackends)
+
+      - record: database:transaction_rate:1m
+        expr: sum(rate(pg_stat_database_xact_commit[1m])) + sum(rate(pg_stat_database_xact_rollback[1m]))
+
+      - record: database:cache_hit_ratio:1m
+        expr: |
+          sum(pg_stat_database_blks_hit) 
+          / 
+          (sum(pg_stat_database_blks_hit) + sum(pg_stat_database_blks_read)) * 100

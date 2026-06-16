@@ -1,12 +1,14 @@
-// src/main/java/com/cognitive/banking/dto/LoanPaymentDTO.java
 package com.cognitive.banking.dto;
 
+import com.cognitive.banking.domain.entity.LoanPayment;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
 public class LoanPaymentDTO {
+
     private UUID paymentId;
     private UUID loanId;
     private String loanNumber;
@@ -17,9 +19,11 @@ public class LoanPaymentDTO {
     private BigDecimal interestAmount;
     private BigDecimal totalPayment;
     private BigDecimal remainingBalance;
-    private String paymentStatus;
+    private LoanPayment.PaymentStatus paymentStatus;  // enum
     private LocalDate paidDate;
     private BigDecimal lateFee;
+
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createdAt;
 
     // Constructors
@@ -28,7 +32,8 @@ public class LoanPaymentDTO {
     public LoanPaymentDTO(UUID paymentId, UUID loanId, String loanNumber, Integer paymentNumber,
                           LocalDate paymentDate, LocalDate dueDate, BigDecimal principalAmount,
                           BigDecimal interestAmount, BigDecimal totalPayment, BigDecimal remainingBalance,
-                          String paymentStatus, LocalDate paidDate, BigDecimal lateFee, LocalDateTime createdAt) {
+                          LoanPayment.PaymentStatus paymentStatus, LocalDate paidDate,
+                          BigDecimal lateFee, LocalDateTime createdAt) {
         this.paymentId = paymentId;
         this.loanId = loanId;
         this.loanNumber = loanNumber;
@@ -76,8 +81,8 @@ public class LoanPaymentDTO {
     public BigDecimal getRemainingBalance() { return remainingBalance; }
     public void setRemainingBalance(BigDecimal remainingBalance) { this.remainingBalance = remainingBalance; }
 
-    public String getPaymentStatus() { return paymentStatus; }
-    public void setPaymentStatus(String paymentStatus) { this.paymentStatus = paymentStatus; }
+    public LoanPayment.PaymentStatus getPaymentStatus() { return paymentStatus; }
+    public void setPaymentStatus(LoanPayment.PaymentStatus paymentStatus) { this.paymentStatus = paymentStatus; }
 
     public LocalDate getPaidDate() { return paidDate; }
     public void setPaidDate(LocalDate paidDate) { this.paidDate = paidDate; }

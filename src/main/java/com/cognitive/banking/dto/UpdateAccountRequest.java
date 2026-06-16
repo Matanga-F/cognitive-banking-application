@@ -1,14 +1,22 @@
-// src/main/java/com/cognitive/banking/dto/UpdateAccountRequest.java
 package com.cognitive.banking.dto;
 
 import com.cognitive.banking.domain.enums.AccountStatus;
-
 import java.math.BigDecimal;
 
 public class UpdateAccountRequest {
+
     private BigDecimal overdraftLimit;
     private BigDecimal interestRate;
     private AccountStatus accountStatus;
+
+    // Constructors
+    public UpdateAccountRequest() {}
+
+    public UpdateAccountRequest(BigDecimal overdraftLimit, BigDecimal interestRate, AccountStatus accountStatus) {
+        this.overdraftLimit = overdraftLimit;
+        this.interestRate = interestRate;
+        this.accountStatus = accountStatus;
+    }
 
     // Getters and Setters
     public BigDecimal getOverdraftLimit() { return overdraftLimit; }

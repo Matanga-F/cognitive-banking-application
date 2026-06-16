@@ -1,43 +1,111 @@
 spring:
-  application:
-    name: cognitive-banking-application
+  config:
+    activate:
+      on-profile: prod
 
   datasource:
-    url: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}
+    url: jdbc:postgresql://${DB_HOST}:${DB_PORT:5432}/${DB_NAME:cognitive_bank}
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 2
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      leak-detection-threshold: 60000
 
   jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
       ddl-auto: validate
     show-sql: false
     properties:
       hibernate:
-        format_sql: true
+        jdbc:
+          batch_size: 30
+        order_inserts: true
+        order_updates: true
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+    validate-on-migrate: true
 
   data:
     redis:
       host: ${REDIS_HOST}
-      port: ${REDIS_PORT}
-      password: ${REDIS_PASSWORD}
-      timeout: 2000ms
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 10s
+      lettuce:
+        pool:
+          max-active: 10
+          max-idle: 5
+          min-idle: 1
 
 server:
-  port: ${SERVER_PORT}
-  servlet:
-    context-path: /api/cognitive/bank
+  port: 8080
+  tomcat:
+    accesslog:
+      enabled: true
+      directory: /var/log/tomcat
+      pattern: '%h %l %u %t "%r" %s %b %D'
+    max-threads: 200
+    min-spare-threads: 20
+  shutdown: graceful
+
+jwt:
+  secret: ${JWT_SECRET}
+  expiration: ${JWT_ACCESS_EXPIRATION:900000}
+  refresh-expiration: 604800000
+
+logging:
+  level:
+    root: WARN
+    com.cognitive.banking: INFO
+    org.springframework: WARN
+    org.hibernate: WARN
+  file:
+    name: /var/log/banking/application.log
+    max-size: 100MB
+    max-history: 30
 
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics,prometheus,env
+        include: health,info,metrics,prometheus
+      base-path: /actuator
   endpoint:
     health:
-      show-details: always
+      show-details: never
+      probes:
+        enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+        step: 1m
 
-logging:
-  level:
-    root: WARN
-    com.cognitivebanking: INFO
+management.health.redis.enabled: false
+
+banking:
+  features:
+    enable-mock-payments: false
+    enable-email-notifications: true
+    transaction-limit: 1000000
+  security:
+    max-login-attempts: 5
+    lockout-duration: 900
+    password-policy:
+      min-length: 12
+      require-special: true
+      require-number: true
+      require-upper-lower: true
+  rate-limiting:
+    enabled: true
+    requests-per-minute: 500
+    burst-capacity: 100

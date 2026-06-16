@@ -1,14 +1,12 @@
-// src/main/java/com/cognitive/banking/dto/CreateLoanRequest.java
 package com.cognitive.banking.dto;
 
 import com.cognitive.banking.domain.enums.LoanType;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Positive;
-
 import java.math.BigDecimal;
 import java.util.UUID;
 
 public class CreateLoanRequest {
+
     @NotNull(message = "User ID is required")
     private UUID userId;
 
@@ -19,15 +17,12 @@ public class CreateLoanRequest {
     private LoanType loanType;
 
     @NotNull(message = "Principal amount is required")
-    @Positive(message = "Principal amount must be positive")
     private BigDecimal principalAmount;
 
     @NotNull(message = "Interest rate is required")
-    @Positive(message = "Interest rate must be positive")
     private BigDecimal interestRate;
 
     @NotNull(message = "Term months is required")
-    @Positive(message = "Term months must be positive")
     private Integer termMonths;
 
     private String purpose;
@@ -37,8 +32,8 @@ public class CreateLoanRequest {
     public CreateLoanRequest() {}
 
     public CreateLoanRequest(UUID userId, UUID accountId, LoanType loanType,
-                             BigDecimal principalAmount, BigDecimal interestRate, Integer termMonths,
-                             String purpose) {
+                             BigDecimal principalAmount, BigDecimal interestRate,
+                             Integer termMonths, String purpose, String collateralDescription) {
         this.userId = userId;
         this.accountId = accountId;
         this.loanType = loanType;
@@ -46,6 +41,7 @@ public class CreateLoanRequest {
         this.interestRate = interestRate;
         this.termMonths = termMonths;
         this.purpose = purpose;
+        this.collateralDescription = collateralDescription;
     }
 
     // Getters and Setters
@@ -72,12 +68,4 @@ public class CreateLoanRequest {
 
     public String getCollateralDescription() { return collateralDescription; }
     public void setCollateralDescription(String collateralDescription) { this.collateralDescription = collateralDescription; }
-
-    // Validation helper
-    public boolean isValid() {
-        return userId != null && accountId != null && loanType != null &&
-                principalAmount != null && principalAmount.compareTo(BigDecimal.ZERO) > 0 &&
-                interestRate != null && interestRate.compareTo(BigDecimal.ZERO) >= 0 &&
-                termMonths != null && termMonths > 0;
-    }
 }

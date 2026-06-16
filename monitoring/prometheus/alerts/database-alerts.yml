@@ -1,0 +1,39 @@
+groups:
+  - name: database_alerts
+    interval: 30s
+    rules:
+      # Database connection issues
+      - alert: DatabaseDown
+        expr: pg_up == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: database
+        annotations:
+          summary: "PostgreSQL is down"
+          description: "Database connection has been lost"
+
+      # High database connections
+      - alert: HighDatabaseConnections
+        expr: pg_stat_database_numbackends > 80
+        for: 5m
+        labels:
+          severity: warning
+          component: database
+        annotations:
+          summary: "High database connections"
+          description: "Database has {{ $value }} active connections"
+
+      # Slow queries
+      - alert: SlowDatabaseQueries
+        expr: |
+          rate(pg_stat_database_xact_rollback[5m]) 
+          / 
+          rate(pg_stat_database_xact_commit[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          component: database
+        annotations:
+          summary: "High transaction rollback rate"
+          description: "Rollback rate is {{ $value | humanizePercentage }}"

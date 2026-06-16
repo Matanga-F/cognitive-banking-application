@@ -1,40 +1,106 @@
 package com.cognitive.banking.service;
 
-import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import java.io.Serializable;
+import java.time.Instant;
+import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 @Service
 public class RefreshTokenService {
+    private static final Logger logger = LoggerFactory.getLogger(RefreshTokenService.class);
 
-    private final RedisTemplate<String, String> redisTemplate;
-    private static final String REFRESH_PREFIX = "refresh:";
+    private final CacheService cacheService;
 
-    public RefreshTokenService(RedisTemplate<String, String> redisTemplate) {
-        this.redisTemplate = redisTemplate;
+    @Value("${app.jwt.refresh-expiration-ms:604800000}")
+    private long refreshTokenExpirationMs;
+
+    // Explicit constructor to initialize cacheService
+    public RefreshTokenService(CacheService cacheService) {
+        this.cacheService = cacheService;
     }
 
-    // Store refresh token ID for a user (used for token rotation and revocation)
-    public void storeRefreshToken(String username, String tokenId, long ttlMillis) {
-        redisTemplate.opsForValue()
-                .set(REFRESH_PREFIX + username + ":" + tokenId, tokenId, ttlMillis, TimeUnit.MILLISECONDS);
+    public String createRefreshToken(String username) {
+        String refreshToken = UUID.randomUUID().toString();
+
+        RefreshTokenData tokenData = new RefreshTokenData(
+                username,
+                Instant.now().plusMillis(refreshTokenExpirationMs)
+        );
+
+        cacheService.put(CacheService.REFRESH_TOKEN_CACHE, refreshToken, tokenData,
+                refreshTokenExpirationMs, TimeUnit.MILLISECONDS);
+
+        // Also store mapping from username to token for easy revocation
+        cacheService.put(CacheService.REFRESH_TOKEN_CACHE, username + ":token", refreshToken,
+                refreshTokenExpirationMs, TimeUnit.MILLISECONDS);
+
+        logger.info("Created refresh token for user: {}", username);
+        return refreshToken;
     }
 
-    // Check if refresh token ID is valid (exists and not revoked)
-    public boolean isValidRefreshToken(String username, String tokenId) {
-        return redisTemplate.hasKey(REFRESH_PREFIX + username + ":" + tokenId);
+    public Optional<String> validateAndGetUsername(String refreshToken) {
+        Optional<RefreshTokenData> tokenDataOpt =
+                cacheService.get(CacheService.REFRESH_TOKEN_CACHE, refreshToken, RefreshTokenData.class);
+
+        if (tokenDataOpt.isEmpty()) {
+            logger.warn("Refresh token not found: {}", refreshToken);
+            return Optional.empty();
+        }
+
+        RefreshTokenData tokenData = tokenDataOpt.get();
+        if (tokenData.getExpiresAt().isBefore(Instant.now())) {
+            logger.warn("Refresh token expired: {}", refreshToken);
+            deleteRefreshToken(refreshToken);
+            return Optional.empty();
+        }
+
+        logger.debug("Validated refresh token for user: {}", tokenData.getUsername());
+        return Optional.of(tokenData.getUsername());
     }
 
-    // Revoke all refresh tokens for a user (e.g., on logout or password change)
-    public void revokeAllUserRefreshTokens(String username) {
-        // In production, you need to iterate over keys with pattern: REFRESH_PREFIX + username + ":*"
-        // This is simplified; use redisTemplate.keys() or maintain a set of token IDs per user.
-        // For brevity, we'll assume a method to delete pattern exists.
-        // We'll implement a more robust solution if needed.
+    public void deleteRefreshToken(String refreshToken) {
+        Optional<RefreshTokenData> tokenDataOpt =
+                cacheService.get(CacheService.REFRESH_TOKEN_CACHE, refreshToken, RefreshTokenData.class);
+
+        if (tokenDataOpt.isPresent()) {
+            String username = tokenDataOpt.get().getUsername();
+            cacheService.evict(CacheService.REFRESH_TOKEN_CACHE, refreshToken);
+            cacheService.evict(CacheService.REFRESH_TOKEN_CACHE, username + ":token");
+            logger.debug("Deleted refresh token for user: {}", username);
+        }
     }
 
-    public void removeRefreshToken(String username, String tokenId) {
-        redisTemplate.delete(REFRESH_PREFIX + username + ":" + tokenId);
+    public void deleteAllUserTokens(String username) {
+        cacheService.revokeAllUserRefreshTokens(username);
+        logger.debug("Deleted all refresh tokens for user: {}", username);
+    }
+
+    public boolean hasValidToken(String username) {
+        return cacheService.exists(CacheService.REFRESH_TOKEN_CACHE, username + ":token");
+    }
+
+    // Serializable class for Redis storage
+    public static class RefreshTokenData implements Serializable {
+        private static final long serialVersionUID = 1L;
+
+        private String username;
+        private Instant expiresAt;
+
+        public RefreshTokenData() {}
+
+        public RefreshTokenData(String username, Instant expiresAt) {
+            this.username = username;
+            this.expiresAt = expiresAt;
+        }
+
+        public String getUsername() { return username; }
+        public Instant getExpiresAt() { return expiresAt; }
+        public void setUsername(String username) { this.username = username; }
+        public void setExpiresAt(Instant expiresAt) { this.expiresAt = expiresAt; }
     }
 }
